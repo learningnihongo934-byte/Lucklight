@@ -201,14 +201,14 @@ const FX = {
       if (glow) { px(x - 2, y, a.c[0]); px(x + 2, y, a.c[0]); }
     }
   },
-  foxfire(a, t, cx, cy, L) {
+  foxfire(a, t, cx, cy, L, p = {}) {
     for (let i = 0; i < 9; i++) {
       const an = t * 0.9 + i / 9 * TAU, s = Math.sin(an); if ((L === 'f') !== (s > 0)) continue;
       const x = cx + Math.cos(an) * 18, y = cy - 1 + s * 5 + Math.sin(t * 3 + i) * 2;
       px(x, y + 1, a.c[1]); px(x - 1, y, a.c[1]); px(x + 1, y, a.c[1]); px(x, y, a.c[3]); px(x, y - 1, a.c[2]);
       px(x + Math.sin(t * 8 + i), y - 2, a.c[2]); if (Math.sin(t * 10 + i) > 0) px(x, y - 3, a.c[1]);
     }
-    if (L === 'f') { // fox ears
+    if (L === 'f') { if (p.noEars) return; // fox ears
       const ex = cx, ey = cy - 9, o = '#d8682a', ins = '#fff0d0';
       for (const d of [-1, 1]) { const bx = ex + d * 3; px(bx, ey - 1, o); px(bx + d, ey - 1, o); px(bx + d, ey - 2, o); px(bx + d * 2, ey - 2, o); px(bx + d * 2, ey - 3, o); px(bx + d, ey - 1, ins); }
     } else ell(null, cx, cy + 9, 14, 3, a.c[1], 36, -t);
@@ -321,16 +321,224 @@ const FX = {
 // sky tint for rare auras (drawn over the scene, under the hero)
 const TINT = { eclipse: 'rgba(8,6,12,0.45)', oni: 'rgba(60,8,8,0.35)', aurora: 'rgba(20,80,70,0.18)', glitch: 'rgba(0,0,0,0.25)', dragon: 'rgba(10,50,40,0.2)', halo: 'rgba(255,230,160,0.12)', void: 'rgba(10,0,20,0.55)', lucklight: 'rgba(255,220,150,0.12)' };
 
+// ---------- glyphs: tiny sprites, digits = palette index
+const GLYPH = {
+  clover: ['.1.1.', '11211', '.121.', '11211', '.1.1.'],
+  leaf: ['.2.', '121', '.1.', '.0.'],
+  bubble: ['.111.', '12..1', '1...1', '1...1', '.111.'],
+  note: ['..2', '..2', '..2', '222', '22.'],
+  rune: [['212', '.2.', '2.2'], ['2.2', '222', '2.2'], ['222', '2.2', '.2.'], ['2..', '222', '..2']],
+  heart: ['.1.1.', '12111', '.111.', '..1..'],
+  coin: ['.2.', '232', '.2.'],
+  star: ['..3..', '..2..', '32323', '..2..', '..3..'],
+  shard: ['.3.', '323', '121', '121', '.1.'],
+  sword: ['.3.', '.2.', '.2.', '.2.', '.2.', '101', '.0.'],
+  link: ['111', '1.1', '111'],
+  fish: ['.111.1', '122211', '.111.1'],
+  thorn: ['1.1', '.2.', '1.1'],
+  daruma: ['.11.', '1221', '1111', '1111', '.11.'],
+  lotus: ['..2..', '.121.', '11111'],
+  petal: ['12', '.1'],
+  drop: ['.2.', '121', '.1.'],
+  flake: ['2.2', '.3.', '2.2'],
+  feather: ['..1', '.21', '21.', '1..'],
+  gear: ['.1.1.', '11211', '12.21', '11211', '.1.1.'],
+  crane: ['1...1', '21.12', '.222.', '..2..'],
+  candle: ['.3.', '.2.', '.1.', '.1.', '010'],
+  bell: ['.1.', '121', '121', '111', '.3.'],
+  moth: ['1.1', '121', '1.1'],
+  ghost: ['.111.', '12121', '11111', '1.1.1'],
+  drum: ['.111.', '12321', '.111.'],
+};
+function glyph(name, x, y, a, i = 0, flip = false) {
+  let g = GLYPH[name]; if (Array.isArray(g[0])) g = g[i % g.length];
+  const w = g[0].length, h = g.length, ox = Math.round(x - w / 2), oy = Math.round(y - h / 2), last = a.c.length - 1;
+  for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) { const ch = g[r][flip ? w - 1 - c : c]; if (ch !== '.') px(ox + c, oy + r, a.c[Math.min(+ch, last)]); }
+}
+const top = a => a.c[a.c.length - 1];
+
+// ---------- generic layered effects (params from data.js)
+Object.assign(FX, {
+  orbit(a, t, cx, cy, L, p) {
+    const n = p.n || 5, r = p.r || 17, ry = p.ry ?? 5, sp = p.sp || 0.8, oy = p.y ?? -1;
+    for (let i = 0; i < n; i++) {
+      const an = t * sp + i / n * TAU, s = Math.sin(an); if ((L === 'f') !== (s > 0)) continue;
+      const x = cx + Math.cos(an) * r, y = cy + oy + s * ry + Math.sin(t * 2 + i) * (p.bob ?? 1.5);
+      if (p.g) glyph(p.g, x, y, a, i, Math.cos(an) * Math.sign(sp) > 0);
+      else { px(x, y, top(a)); px(x + 1, y, a.c[1]); px(x, y + 1, a.c[1]); px(x + 1, y + 1, a.c[0]); }
+    }
+  },
+  rise(a, t, cx, cy, L, p) {
+    const n = p.n || 10, h = p.h || 32, w = p.w || 28;
+    for (let i = 0; i < n; i++) {
+      if ((L === 'f') !== (R(i, 7) > 0.5)) continue;
+      const ph = (t / (p.per || 3) * (0.7 + R(i) * 0.6) + R(i, 1)) % 1;
+      const x = cx + (R(i, 2) - 0.5) * w + Math.sin(t * 1.5 + i) * (p.sway ?? 2), y = cy + 9 - ph * h;
+      if (p.g) glyph(p.g, x, y, a, i); else px(x, y, a.c[ph < 0.3 ? a.c.length - 1 : 1 + (i % 2)]);
+    }
+  },
+  fall(a, t, cx, cy, L, p) {
+    const n = p.n || 10, h = p.h || 38, w = p.w || 34;
+    for (let i = 0; i < n; i++) {
+      if ((L === 'f') !== (R(i, 7) > 0.4)) continue;
+      const ph = (t / (p.per || 3) * (0.7 + R(i) * 0.6) + R(i, 1)) % 1;
+      const x = cx + (R(i, 2) - 0.5) * w + Math.sin(t * 1.2 + i) * (p.sway ?? 2), y = cy - 28 + ph * h;
+      if (p.g) glyph(p.g, x, y, a, i); else px(x, y, pick(a, i));
+    }
+  },
+  breeze(a, t, cx, cy, L, p) {
+    const n = p.n || 8;
+    for (let i = 0; i < n; i++) {
+      if ((L === 'f') !== (R(i, 4) > 0.5)) continue;
+      const y0 = cy - 14 + R(i) * 26, sp = (p.sp || 40) * (0.7 + R(i, 1) * 0.6), x0 = ((t * sp + R(i, 2) * 120) % 120) - 60, len = p.len || 6 + Math.floor(R(i, 3) * 6);
+      for (let j = 0; j < len; j++) { const x = cx + x0 - j; if (Math.abs(x - cx) > 52) continue; px(x, y0 + Math.sin((x0 - j) * 0.15 + i) * 1.5, a.c[j < 2 ? a.c.length - 1 : j < len / 2 ? 1 : 0]); }
+    }
+  },
+  ripple(a, t, cx, cy, L, p) {
+    const n = p.n || 3, per = p.per || 1.6;
+    for (let k = 0; k < n; k++) {
+      const ph = (t / per + k / n) % 1, rx = 4 + ph * (p.r || 22), ry = rx * (p.flat ?? 0.25);
+      ell(L, cx, cy + (p.y ?? 9), rx, ry, a.c[ph < 0.3 ? a.c.length - 1 : ph < 0.7 ? 1 : 0], Math.max(12, Math.round(rx * 2.6)));
+    }
+    if (p.drop && L === 'f') { const ph = (t / per) % 1; if (ph > 0.7) px(cx + 3, cy - 20 + (ph - 0.7) * 95, a.c[2]); }
+  },
+  smoke(a, t, cx, cy, L, p) {
+    const n = p.n || 8, f = Math.floor(t * 4);
+    for (let i = 0; i < n; i++) {
+      if ((L === 'f') !== (R(i, 6) > 0.6)) continue;
+      const ph = (t / (p.per || 3.5) + R(i)) % 1, x = cx + (R(i, 1) - 0.5) * (p.w || 30) + Math.sin(t + i) * 3, y = cy + (p.y ?? 8) - ph * (p.h || 30), r = 1 + Math.floor(ph * (p.size || 4));
+      for (let yy = -r; yy <= r; yy++) for (let xx = -r; xx <= r; xx++) {
+        if (xx * xx + yy * yy > r * r || R(i * 31 + xx * 7 + yy, f) < ph * 0.8) continue;
+        px(x + xx, y + yy, a.c[xx + yy > 0 ? 0 : ph < 0.3 ? 2 : 1]);
+      }
+    }
+  },
+  beam(a, t, cx, cy, L, p) {
+    const w = p.w || 10, last = a.c.length - 1;
+    if (L !== 'b') { for (let i = 0; i < 8; i++) { const ph = (t * 0.6 + R(i)) % 1; px(cx + (R(i, 1) - 0.5) * w * 1.6, cy + 8 - ph * 60, a.c[last]); } return; }
+    const f = Math.floor(t * 12);
+    for (let y = 0; y < cy + 9; y++) {
+      const ww = w + Math.sin(y * 0.25 - t * 6);
+      for (let x = -Math.ceil(ww); x <= ww; x++) {
+        const e = Math.abs(x) / ww; if (e > 0.35 && R(x * 13 + y * 7, f) < e) continue;
+        px(cx + x, y, e < 0.2 ? a.c[last] : e < 0.5 ? a.c[last - 1] : a.c[1]);
+      }
+    }
+    ell(null, cx, cy + 9, w + 6, 3, a.c[last], 40, t);
+  },
+  rays(a, t, cx, cy, L, p) {
+    if (L !== 'b') return;
+    const n = p.n || 8;
+    for (let k = 0; k < n; k++) {
+      const an = t * (p.sp || 0.4) + k / n * TAU, c = a.c[k % a.c.length];
+      for (let r = 10; r < (p.len || 56); r++) if (r < 22 || (r + k) % 2 === 0) px(cx + Math.cos(an) * r, cy - 6 + Math.sin(an) * r, c);
+    }
+  },
+  rings(a, t, cx, cy, L, p) {
+    const n = p.n || 2;
+    for (let k = 0; k < n; k++) {
+      const r = (p.r || 16) + k * 5, tilt = (k % 2 ? -1 : 1) * (p.tilt ?? 0.35), sp = (k % 2 ? -1 : 1) * (p.sp || 1);
+      for (let i = 0; i < 48; i++) {
+        const an = i / 48 * TAU, s = Math.sin(an); if ((L === 'f') !== (s > 0)) continue;
+        const x0 = Math.cos(an) * r, tick = (i + Math.floor(t * sp * 8) % 48 + 48) % 6 === 0;
+        px(cx + x0, cy - 2 + s * r * 0.3 + x0 * tilt, tick ? top(a) : a.c[1 + (k % 2)]);
+      }
+    }
+  },
+  wings(a, t, cx, cy, L, p) {
+    if (L !== 'b') return;
+    const flap = Math.sin(t * (p.sp || 3)) * 2, n = p.n || 1, last = a.c.length - 1;
+    for (let w = 0; w < n; w++) for (const d of [-1, 1]) for (let f = 0; f < 6; f++) {
+      const len = (p.len || 12) - f * 1.4 - w * 2, by = cy - 4 + f * 2 - w * 5;
+      for (let j = 0; j < len; j++) px(cx + d * (5 + j), by - j * (0.55 - w * 0.45) - flap * (j / len), f === 0 ? a.c[last] : j > len - 2 ? a.c[0] : a.c[1 + (f % 2)]);
+    }
+  },
+  helix(a, t, cx, cy, L, p) {
+    const N = p.n || 40, r = p.r || 14, st = p.strands || 2;
+    for (let s = 0; s < st; s++) for (let k = 0; k < N; k++) {
+      const an = t * (p.sp || 2) + k * 0.35 + s * TAU / st, sn = Math.sin(an); if ((L === 'f') !== (sn > 0)) continue;
+      px(cx + Math.cos(an) * r * (1 - k / N * 0.3), cy + 9 - k * (p.h || 44) / N, k % 5 === 0 ? top(a) : a.c[1 + (s % 2)]);
+    }
+  },
+  galaxy(a, t, cx, cy, L, p) {
+    if (L !== 'b') { for (let i = 0; i < 6; i++) if (Math.sin(t * 3 + i * 2) > 0.5) px(cx + (R(i) - 0.5) * 40, cy - 6 + (R(i, 1) - 0.5) * 24, top(a)); return; }
+    const arms = p.arms || 2, R0 = p.r || 30;
+    for (let arm = 0; arm < arms; arm++) for (let i = 0; i < 70; i++) {
+      const d = i / 70 * R0, an = -t * (p.sp || 0.5) + arm / arms * TAU + d * 0.18 + (R(i, arm) - 0.5) * 0.5;
+      px(cx + Math.cos(an) * d, cy - 4 + Math.sin(an) * d * (p.flat || 0.45), d < 6 ? top(a) : a.c[i % 3 ? 1 : 2]);
+    }
+    if (p.core) { disc(cx, cy - 4, p.core, a.c[0]); ell(null, cx, cy - 4, p.core + 1, p.core + 1, a.c[2], 40, t); }
+  },
+  matrix(a, t, cx, cy, L) {
+    if (L !== 'b') return;
+    const f = Math.floor(t * 8);
+    for (let i = 0; i < 13; i++) {
+      const x = cx - 39 + i * 6 + Math.floor(R(i) * 3), sp = 20 + R(i, 1) * 25, head = ((t * sp + R(i, 2) * 80) % 80) - 10;
+      for (let j = 0; j < 10; j++) {
+        const y = head - j * 2; if (y < 0 || y > cy + 9) continue;
+        px(x, y, j === 0 ? top(a) : j < 3 ? a.c[2] : a.c[1]); if (R(i * 50 + j, f) > 0.5) px(x + 1, y, a.c[1]);
+      }
+    }
+  },
+  eyes(a, t, cx, cy, L, p) {
+    if (L !== 'b') return;
+    for (let i = 0; i < (p.n || 6); i++) {
+      const x = Math.round(cx + (R(i, 11) - 0.5) * (p.w || 60)), y = Math.round(cy - 26 + R(i, 12) * 32);
+      if (Math.abs(x - cx) < 9 && y > cy - 14) continue;
+      if (Math.sin(t * (0.8 + R(i, 13)) + i * 3) < -0.7) { rect(x - 2, y, 5, 1, a.c[1]); continue; }
+      rect(x - 2, y - 1, 5, 3, a.c[1]); rect(x - 1, y - 1, 3, 3, a.c[2]);
+      px(x + Math.round(Math.max(-1, Math.min(1, (cx - x) / 20))), y, a.c[0]);
+    }
+  },
+  crown(a, t, cx, cy, L) {
+    if (L !== 'f') return;
+    const y = cy - 12 + Math.round(Math.sin(t * 2) * 0.6), c = a.c;
+    rect(cx - 4, y, 8, 2, c[1]);
+    for (const x of [-4, -1, 0, 3]) { px(cx + x, y - 1, c[1]); px(cx + x, y - 2, c[2]); }
+    px(cx - 1, y - 3, top(a)); px(cx, y - 3, top(a)); px(cx - 2, y, c[3] || top(a)); px(cx + 1, y, c[3] || top(a));
+    for (let i = 0; i < 5; i++) if (Math.sin(t * 4 + i * 2) > 0.6) glyph('star', cx + (R(i) - 0.5) * 30, cy - 14 + R(i, 1) * 20, a, i);
+  },
+  infinity(a, t, cx, cy, L, p) {
+    const r = p.r || 24, head = (t * 0.5 % 1) * 90;
+    for (let i = 0; i < 90; i++) {
+      const s = i / 90 * TAU, den = 1 + Math.sin(s) ** 2, x = r * Math.cos(s) / den, z = r * Math.sin(s) * Math.cos(s) / den;
+      if ((L === 'f') !== (z > 0)) continue;
+      const dd = (i - head + 90) % 90;
+      px(cx + x, cy - 2 + z * 0.35, dd < 4 ? top(a) : dd < 20 ? a.c[2] : a.c[1]);
+    }
+  },
+  clock(a, t, cx, cy, L) {
+    if (L !== 'b') return;
+    const ox = cx, oy = cy - 14;
+    disc(ox, oy, 12, a.c[0]); ell(null, ox, oy, 12, 12, a.c[2], 60);
+    for (let h = 0; h < 12; h++) { const an = h / 12 * TAU; px(ox + Math.cos(an) * 10, oy + Math.sin(an) * 10, top(a)); }
+    for (const [sp, len] of [[2.5, 9], [0.4, 6]]) { const an = t * sp - Math.PI / 2; line(ox, oy, ox + Math.cos(an) * len, oy + Math.sin(an) * len, a.c[2]); }
+  },
+});
+
+// layers of an aura: [{ f, ...params }], each with its own palette view
+const specCache = new Map();
+function layers(a) {
+  let s = specCache.get(a.id);
+  if (!s) {
+    s = (Array.isArray(a.fx) ? a.fx : [a.fx]).map(x => typeof x === 'string' ? { f: x } : x).map(p => ({ p, a: p.c ? { ...a, c: p.c } : a }));
+    specCache.set(a.id, s);
+  }
+  return s;
+}
+const runFx = (a, t, cx, cy, L) => { for (const l of layers(a)) FX[l.p.f](l.a, t, cx, cy, L, l.p); };
+const tintOf = a => a.tint || TINT[a.id];
+
 // full stage: scene + aura + hero. a = aura object or null
 export function drawStage(ctx, a, t) {
   C = ctx; ctx.imageSmoothingEnabled = false;
   if (!sceneCache) sceneCache = buildScene();
   ctx.drawImage(sceneCache, 0, 0);
   sceneLive(t);
-  if (a && TINT[a.id]) { ctx.fillStyle = TINT[a.id]; ctx.fillRect(0, 0, W, H); }
-  if (a) FX[a.fx](a, t, HERO_X, HERO_Y, 'b');
+  if (a && tintOf(a)) { ctx.fillStyle = tintOf(a); ctx.fillRect(0, 0, W, H); }
+  if (a) runFx(a, t, HERO_X, HERO_Y, 'b');
   hero(HERO_X, HERO_Y + (Math.floor(t * 1.4) % 2 === 0 ? 0 : 0), t);
-  if (a) FX[a.fx](a, t, HERO_X, HERO_Y, 'f');
+  if (a) runFx(a, t, HERO_X, HERO_Y, 'f');
 }
 
 // small preview (collection cards, reveal). unknown = draws a dark silhouette with no aura
@@ -339,6 +547,6 @@ export function drawThumb(ctx, a, t, unknown) {
   const w = ctx.canvas.width, h = ctx.canvas.height, cx = w / 2, cy = Math.round(h * 0.58);
   ctx.fillStyle = unknown ? '#2a2530' : '#1b1e38'; ctx.fillRect(0, 0, w, h);
   if (unknown) { hero(cx, cy, 0, '#14111a'); return; }
-  if (TINT[a.id]) { ctx.fillStyle = TINT[a.id]; ctx.fillRect(0, 0, w, h); }
-  FX[a.fx](a, t, cx, cy, 'b'); hero(cx, cy, t); FX[a.fx](a, t, cx, cy, 'f');
+  if (tintOf(a)) { ctx.fillStyle = tintOf(a); ctx.fillRect(0, 0, w, h); }
+  runFx(a, t, cx, cy, 'b'); hero(cx, cy, t); runFx(a, t, cx, cy, 'f');
 }

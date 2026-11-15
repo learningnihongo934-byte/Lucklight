@@ -1,6 +1,6 @@
 # Lucklight
 
-Draw fortunes (omikuji) at a pixel-art shrine at night. Each draw wraps your character in one of 20 auras, from **Dust** (1 in 2) to **Lucklight** (1 in 1,500,000,000).
+Draw fortunes (omikuji) at a pixel-art shrine at night. Each draw wraps your character in one of 100 auras, from **Dust** (1 in 2) to **Lucklight** (1 in 1,500,000,000).
 
 Live at **https://lucklight.rennko.tech**. It's also a cabinet in [Rennko Arcade](https://arcade.rennko.tech).
 

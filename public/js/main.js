@@ -290,7 +290,8 @@ function frame(now) {
   if (cutAura) drawThumb(cutCtx, cutAura, t);
   if (tab === 'index' && now - lastThumb > 66) {
     lastThumb = now;
-    for (const cv of document.querySelectorAll('canvas.thumb')) drawThumb(cv.getContext('2d'), AURA[cv.dataset.a], t, cv.dataset.u === '1');
+    const lr = $('#tab-list').getBoundingClientRect(), top = Math.max(lr.top, 0), bot = Math.min(lr.bottom, innerHeight);
+    for (const cv of document.querySelectorAll('canvas.thumb')) { const r = cv.getBoundingClientRect(); if (r.bottom > top && r.top < bot) drawThumb(cv.getContext('2d'), AURA[cv.dataset.a], t, cv.dataset.u === '1'); }
   }
   if (now - lastSec > 1000) { lastSec = now; renderStats(); if (tab === 'charms') refresh(); if (tab === 'board' && (lbTimer += 1) % 30 === 0) loadBoard(); }
   requestAnimationFrame(frame);
