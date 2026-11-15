@@ -134,8 +134,9 @@ async function reveal(a, isNew, earned, N, nNew) {
     }
   }
   sfx.result(tier, rank);
-  if (tier >= 2 && big) await cutscene(a, tier, isNew);
-  showSlip(a, isNew, earned, tier, N, nNew);
+  const shown = tier >= 2 && big;
+  if (shown) await cutscene(a, tier, isNew);
+  showSlip(a, isNew, earned, tier, N, nNew, shown);
   revealing = false;
   refresh();
 }
@@ -157,14 +158,15 @@ async function cutscene(a, tier, isNew) {
   document.body.classList.remove('shake');
 }
 
-function showSlip(a, isNew, earned, tier, N = 1, nNew = 0) {
+function showSlip(a, isNew, earned, tier, N = 1, nNew = 0, shown = false) {
   const g = GRADES[tier], slip = $('#slip');
   slip.className = `slip t${tier}`;
   slip.innerHTML = `<div class="grade" title="${g.word}">${g.kanji}</div>
     <div class="nm" style="--ac:${a.c[Math.min(1, a.c.length - 1)]}">${esc(a.name)}${isNew ? '<span class="stamp">NEW</span>' : ''}${a.ev ? '<span class="evtag">Festival</span>' : ''}</div>
     <div class="odds">1 in ${fmt(a.n)}${N > 1 ? ` · best of ${N} draws` : ''}</div>
     <div class="earn">${earned ? `+${fmt(earned)} mon` : ''}${nNew > (isNew ? 1 : 0) ? ` · ${nNew} new auras` : ''}</div>`;
-  if (tier >= 1 && popupsOn()) toast(`${g.word}: ${a.name}, 1 in ${fmt(a.n)}`);
+  // a toast only for 1 in 10,000+ draws that did not already get a full-screen reveal
+  if (tier >= 2 && !shown && popupsOn()) toast(`${g.word}: ${a.name}, 1 in ${fmt(a.n)}`);
 }
 
 // ---------- UI

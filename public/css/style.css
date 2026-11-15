@@ -159,10 +159,11 @@ main {
 body.shake main { animation: shake .35s steps(3) 3; }
 
 .toast {
-  position: fixed; left: 50%; bottom: 18px; transform: translate(-50%, 140%); background: var(--ink); color: var(--paper);
-  border-color: var(--paper3); padding: 8px 14px; font-size: 14px; z-index: 30; transition: transform .2s steps(4); max-width: calc(100% - 32px);
+  position: fixed; left: 50%; bottom: 18px; transform: translate(-50%, calc(100% + 30px)); background: var(--ink); color: var(--paper);
+  border-color: var(--paper3); padding: 8px 14px; font-size: 14px; z-index: 30; transition: transform .2s steps(4), opacity .2s steps(4), visibility 0s .2s; max-width: calc(100% - 32px);
+  opacity: 0; visibility: hidden; pointer-events: none;
 }
-.toast.show { transform: translate(-50%, 0); }
+.toast.show { transform: translate(-50%, 0); opacity: 1; visibility: visible; transition: transform .2s steps(4), opacity .2s steps(4); }
 .foot { text-align: center; color: #a8927a; font-size: 12px; padding: 8px 0 18px; }
 .foot a { color: #d4c19a; }
 
