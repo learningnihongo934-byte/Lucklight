@@ -247,7 +247,7 @@ const VIEWS = {
       `<div class="row" data-k="s-cut"><div class="info"><b>Reveals</b><span>Name spins and full-screen slips. Click a slip to skip it.</span></div>${sel('cut', st.cut, [['all', 'Always'], ['new', 'New auras only'], ['off', 'Off']])}</div>`,
       `<div class="row" data-k="s-stop"><div class="info"><b>Stop auto-draw</b><span>Turn auto off when you draw something at least this rare.</span></div>${sel('stopAt', st.stopAt, [[0, 'Never'], [1e3, '1 in 1K'], [1e4, '1 in 10K'], [1e5, '1 in 100K'], [1e6, '1 in 1M'], [1e7, '1 in 10M'], [1e8, '1 in 100M'], [1e9, '1 in 1B']])}</div>`,
       `<div class="row" data-k="s-new"><div class="info"><b>Stop on new auras</b><span>Turn auto off on any first-time aura.</span></div>${chk('stopNew', st.stopNew)}</div>`,
-      `<div class="row" data-k="s-vol"><div class="info"><b>Volume</b><span>${st.vol}%</span></div><input type="range" min="0" max="100" data-set="vol" value="${st.vol}"></div>`,
+      `<div class="row" data-k="s-vol"><div class="info"><b>Sound effects</b><span>Draw shakes, ticks, reveal stingers and clicks. Music is separate. ${st.vol}%</span></div><div class="btns">${chk('sfx', !S.mute)}<input type="range" min="0" max="100" data-set="vol" value="${st.vol}"></div></div>`,
       `<div class="row" data-k="s-save"><div class="info"><b>Save</b><span>Copy a save code to move to another browser, or paste one in.</span></div>
         <div class="btns"><button data-act="export">Export</button><button data-act="import">Import</button><button data-act="reset">Reset</button></div></div>`,
       `<div class="row" data-k="s-stats"><div class="info"><b>Stats</b><span>${fmt(S.rolls)} rolls · ${fmt(S.mon)} mon · rarest ${S.best ? `${esc(AURA[S.best].name)} (1 in ${fmt(AURA[S.best].n)})` : 'none yet'}${S.tainted ? ' · admin save (not posted to the board)' : ''}</span></div></div>`,
@@ -269,7 +269,7 @@ function renderStats() {
   $('#luck').textContent = '×' + short2(p.total);
   $('#rolls').textContent = fmt(S.rolls);
   $('#autowrap').hidden = !S.up.auto; $('#auto').checked = !!S.auto;
-  $('#mute').textContent = S.mute ? 'Sound off' : 'Sound on';
+  $('#mute').textContent = S.mute ? 'SFX off' : 'SFX on';
   $('#musicbtn').textContent = S.set.music ? 'Music on' : 'Music off';
   $('#popbtn').textContent = S.set.popups ? 'Popups on' : 'Popups off';
   for (const b of ['#mute', '#musicbtn', '#popbtn']) $(b).classList.toggle('off', /off/.test($(b).textContent));
@@ -375,6 +375,7 @@ function setSetting(key, el) {
   else if (key === 'drawSize') { const n = Math.round(+v); S.drawSize = n >= 1 && n < maxDraw() ? n : null; }
   else if (key === 'vol') { S.set.vol = +v; setVolume(+v / 100); }
   else if (key === 'stopAt') S.set.stopAt = +v;
+  else if (key === 'sfx') { S.mute = !v; setMuted(S.mute); }
   else if (key === 'musicVol') { S.set.musicVol = +v; syncMusic(); }
   else if (key === 'music') { S.set.music = v; syncMusic(); }
   else S.set[key] = v;
@@ -397,7 +398,7 @@ $('#flt').addEventListener('change', e => { ui.f = e.target.value; listT = 0; re
 $('#roll').addEventListener('pointerdown', e => { if (e.button === 0) { e.preventDefault(); roll(); } });
 $('#roll').addEventListener('click', e => { if (e.detail === 0) roll(); });
 $('#auto').addEventListener('change', e => { S.auto = e.target.checked; save(); });
-$('#mute').addEventListener('click', () => { S.mute = !S.mute; setMuted(S.mute); save(); renderStats(); });
+$('#mute').addEventListener('click', () => { S.mute = !S.mute; setMuted(S.mute); save(); refresh(); });
 $('#musicbtn').addEventListener('click', () => { S.set.music = !S.set.music; syncMusic(); save(); refresh(); });
 $('#popbtn').addEventListener('click', () => { S.set.popups = !S.set.popups; save(); refresh(); toast(S.set.popups ? 'Popups on.' : 'Popups off: draws land quietly.'); });
 $('#cut').addEventListener('pointerdown', () => skipCut?.());
