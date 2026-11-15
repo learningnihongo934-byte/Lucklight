@@ -155,5 +155,7 @@ export const GEAR = [
   { id: 'gauntlet',  slot: 'hand', name: 'Thunder Gauntlet', luck: 2.5, speed: 0.1,  need: { thunder: 2, tide: 2, frost: 3 },      mon: 4000 },
   { id: 'foxmask',   slot: 'neck', name: 'Fox Mask',         luck: 3,   speed: 0.05, need: { kitsune: 1, lantern: 2, thunder: 2 }, mon: 15000 },
   { id: 'eclipseglove',slot:'hand',name: 'Eclipse Glove',    luck: 4,   speed: 0.1,  need: { eclipse: 1, kitsune: 1, lantern: 2 }, mon: 40000 },
+  { id: 'harvestgloves', slot: 'hand', name: 'Harvest Gloves', luck: 1.5, speed: 0.05, tokens: 250 },
+  { id: 'wishbonependant', slot: 'neck', name: 'Wishbone Pendant', luck: 2, speed: 0, tokens: 400 },
   { id: 'cometstone',slot: 'neck', name: 'Comet Stone',      luck: 6,   speed: 0.1,  need: { comet: 1, eclipse: 1, lantern: 3 },   mon: 120000 },
 ];

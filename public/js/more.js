@@ -135,3 +135,12 @@ export const EVENT_AURAS = [
   ev('Harvest Moon', 450000, ['eclipse', { f: 'fall', g: 'maple', n: 8, per: 3 }, { f: 'rings', n: 1, r: 20, sp: 0.4 }], 'amber', 0.35),
   ev('Cornucopia', 900000, [{ f: 'rays', n: 12 }, 'crown', { f: 'rise', g: 'corn', n: 6, per: 2.5 }, { f: 'orbit', g: 'pumpkin', n: 4, r: 20, sp: 0.5 }], 'gold'),
 ];
+
+// ---------- Harvest Market: the all-year way to get festival things
+export const HARVEST = {
+  tokens: n => Math.max(1, Math.round(Math.log10(n) ** 1.5)), // per festival aura drawn: Acorn 2 … Cornucopia 16
+  giftTokens: 10,
+  lantern: { mon: 1500, secs: 300, max: 3600 }, // festival auras roll while lit
+  basket: 30,
+  auras: { acorn: 5, 'corn-husk': 10, cranberry: 20, 'maple-leaf': 40, 'pumpkin-patch': 80, wishbone: 150, 'pumpkin-pie': 300, gobbler: 600, 'harvest-moon': 1200, cornucopia: 2500 },
+};

@@ -1,5 +1,6 @@
 // Lucklight: draw fortunes at a night shrine, collect auras, get luckier.
 import { AURAS, AURA, reward, tierOf, GRADES, UPGRADES, cooldownBase, CHARMS, GEAR, EVENT } from './data.js';
+import { HARVEST } from './more.js';
 import { drawStage, drawThumb } from './fx.js';
 import { sfx, setMuted, setVolume } from './sfx.js';
 
@@ -16,7 +17,7 @@ const fresh = () => ({
   v: 2, mon: 0, rolls: 0, inv: {}, found: {}, equipped: null, best: null,
   up: { luck: 0, speed: 0, fortune: 0, multi: 0, auto: 0 }, charms: {}, active: {}, slip: null,
   owned: {}, gear: { hand: null, neck: null }, name: '', pid: '', mute: false, auto: false,
-  dial: null, drawSize: null, log: [], gift: '', evForce: null, adminLuck: 1, tainted: false,
+  dial: null, drawSize: null, log: [], gift: '', evForce: null, adminLuck: 1, tainted: false, tokens: 0, lantern: 0,
   set: { autoWear: true, cut: 'all', stopAt: 0, stopNew: false, vol: 50, music: true, musicVol: 35, popups: true, autoQuiet: false },
 });
 let S = fresh();
@@ -45,7 +46,10 @@ const popupsOn = () => S.set.popups && !(S.auto && S.set.autoQuiet);
 // ---------- event
 const eventOn = () => S.evForce === 'on' ? true : S.evForce === 'off' ? false : Date.now() >= EVENT.start && Date.now() < EVENT.end;
 const POOL_ON = AURAS.filter(a => !a.ev || a.ev === EVENT.id), POOL_OFF = CORE;
-const pool = () => eventOn() ? POOL_ON : POOL_OFF;
+// festival auras roll during the festival, or any time a Harvest Lantern is lit
+const lanternOn = () => S.lantern > Date.now();
+const harvestOn = () => eventOn() || lanternOn();
+const pool = () => harvestOn() ? POOL_ON : POOL_OFF;
 const today = () => new Date().toLocaleDateString('en-CA');
 const left = ms => { const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60; return d ? `${d}d ${h}h` : `${h}h ${m}m`; };
 
@@ -93,6 +97,7 @@ function drawBatch(n) {
     const isNew = !S.found[a.id];
     if (isNew) { S.found[a.id] = S.rolls; fresh.push(a); }
     earned += reward(a.n); if (!best || a.n > best.n) best = a;
+    if (a.ev) S.tokens += HARVEST.tokens(a.n);
     if (tierOf(a.n) >= 2 || isNew) S.log.unshift({ id: a.id, r: S.rolls, nw: isNew ? 1 : 0 });
   }
   if (S.log.length > 40) S.log.length = 40;
@@ -171,7 +176,7 @@ function showSlip(a, isNew, earned, tier, N = 1, nNew = 0, shown = false) {
 
 // ---------- UI
 let tab = 'index';
-const TABS = { index: 'Collection', shrine: 'Offerings', charms: 'Charms', craft: 'Craft', board: 'Board', settings: 'Settings' };
+const TABS = { index: 'Collection', shrine: 'Offerings', charms: 'Charms', craft: 'Craft', market: 'Market', board: 'Board', settings: 'Settings' };
 $('#tabs').innerHTML = Object.entries(TABS).map(([k, v], i) => `<button data-tab="${k}" title="Key ${i + 1}">${v}</button>`).join('');
 const ui = { q: '', f: 'all' };
 
@@ -188,8 +193,7 @@ const VIEWS = {
     const list = AURAS.filter(a => {
       if (f === 'event' && !a.ev) return false;
       if (f === 'found' && !S.found[a.id]) return false;
-      if (f === 'missing' && (S.found[a.id] || (a.ev && !ev))) return false;
-      if (f === 'all' && a.ev && !ev && !S.found[a.id]) return false;
+      if (f === 'missing' && S.found[a.id]) return false;
       return !q || (S.found[a.id] && a.name.toLowerCase().includes(q)) || fmt(a.n).replace(/,/g, '').startsWith(q.replace(/,/g, ''));
     });
     const found = CORE.filter(a => S.found[a.id]).length, efound = EVA.filter(a => S.found[a.id]).length;
@@ -222,8 +226,8 @@ const VIEWS = {
     const act = Object.entries(S.active).filter(([, u]) => u > now).map(([id, u]) => `${CH[id].name} ×${CH[id].mult} · ${left(u - now)}`);
     if (S.slip) act.push(`${CH[S.slip].name} ×${fmt(CH[S.slip].mult)} on your next roll`);
     return [`<p class="lede" data-k="head">${act.length ? 'Active: ' + act.join(' &nbsp;|&nbsp; ') : 'Fold auras and mon into charms. Timed charms of different kinds multiply.'}</p>`,
-      ...CHARMS.filter(c => !c.ev || ev || S.charms[c.id]).map(c => {
-        const have = S.charms[c.id] || 0, craftable = !c.ev || ev;
+      ...CHARMS.map(c => {
+        const have = S.charms[c.id] || 0, craftable = true;
         return `<div class="row" data-k="c-${c.id}"><div class="info"><b>${c.name}</b>${c.ev ? ' <span class="evtag">Festival</span>' : ''} <span class="lvl">held ${have}</span>
           <span>${c.once ? `Next roll: luck ×${fmt(c.mult)}` : `Luck ×${c.mult} for ${c.secs >= 120 ? c.secs / 60 + ' min' : c.secs + 's'}`}</span>${craftable ? `<span class="chips">${need(c.need, c.mon)}</span>` : ''}</div>
           <div class="btns">${craftable ? `<button data-act="charm" data-id="${c.id}" ${canPay(c.need, c.mon) ? '' : 'disabled'}>Craft</button>` : ''}
@@ -235,13 +239,28 @@ const VIEWS = {
       ...GEAR.map(g => {
         const own = S.owned[g.id], worn = S.gear[g.slot] === g.id;
         return `<div class="row ${worn ? 'on' : ''}" data-k="g-${g.id}"><div class="info"><b>${g.name}</b> <span class="lvl">${g.slot}</span>
-          <span>Luck +${g.luck}${g.speed ? `, draws ${Math.round(g.speed * 100)}% faster` : ''}</span>${own ? '' : `<span class="chips">${need(g.need, g.mon)}</span>`}</div>
-          ${own ? `<button data-act="gear" data-id="${g.id}">${worn ? 'Take off' : 'Wear'}</button>` : `<button data-act="forge" data-id="${g.id}" ${canPay(g.need, g.mon) ? '' : 'disabled'}>Craft</button>`}</div>`;
+          <span>Luck +${g.luck}${g.speed ? `, draws ${Math.round(g.speed * 100)}% faster` : ''}</span>${own ? '' : `<span class="chips">${g.tokens ? `<span class="chip ${S.tokens >= g.tokens ? 'ok' : ''}">${g.tokens} harvest tokens · Harvest Market</span>` : need(g.need, g.mon)}</span>`}</div>
+          ${own ? `<button data-act="gear" data-id="${g.id}">${worn ? 'Take off' : 'Wear'}</button>` : g.tokens ? `<button data-act="tab" data-id="market">Market</button>` : `<button data-act="forge" data-id="${g.id}" ${canPay(g.need, g.mon) ? '' : 'disabled'}>Craft</button>`}</div>`;
       })];
+  },
+  market() {
+    const now = Date.now(), L = HARVEST.lantern, lit = lanternOn();
+    const card = (k, name, sub, btn, thumb = '') => `<div class="row" data-k="${k}">${thumb}<div class="info"><b>${name}</b>${sub}</div>${btn}</div>`;
+    return [`<p class="lede" data-k="head">Harvest Market, open all year. You have <b class="tok">${fmt(S.tokens)} harvest tokens</b>. Every festival aura you draw pays tokens (Acorn 2 up to Cornucopia 15); the festival's daily gift adds ${HARVEST.giftTokens}.</p>`,
+      card('m-lantern', 'Harvest Lantern', `<span>Festival auras can roll for ${L.secs / 60} minutes, even when the festival is over. Stacks up to ${L.max / 60} minutes.</span><span>${lit ? `Lit: ${left(S.lantern - now)} left` : eventOn() ? 'The festival is running, so festival auras already roll.' : 'Not lit'}</span>`,
+        `<button data-act="lantern" ${S.mon >= L.mon && S.lantern - now <= (L.max - L.secs) * 1000 ? '' : 'disabled'}>${short(L.mon)} mon</button>`),
+      card('m-basket', 'Harvest Basket', `<span>Charm: luck ×${CH.basket.mult} for ${CH.basket.secs / 60} min. Held ${S.charms.basket || 0}.</span>`,
+        `<button data-act="buybasket" ${S.tokens >= HARVEST.basket ? '' : 'disabled'}>${HARVEST.basket} tokens</button>`),
+      ...GEAR.filter(g => g.tokens).map(g => card(`m-${g.id}`, g.name, `<span>${g.slot} gear · luck +${g.luck}${g.speed ? `, draws ${Math.round(g.speed * 100)}% faster` : ''}</span>`,
+        S.owned[g.id] ? `<button data-act="gear" data-id="${g.id}">${S.gear[g.slot] === g.id ? 'Take off' : 'Wear'}</button>` : `<button data-act="buygear" data-id="${g.id}" ${S.tokens >= g.tokens ? '' : 'disabled'}>${g.tokens} tokens</button>`)),
+      ...EVA.map(a => card(`m-${a.id}`, esc(a.name), `<span>1 in ${fmt(a.n)} · held ×${fmt(S.inv[a.id] || 0)}</span>`,
+        `<button data-act="buyaura" data-id="${a.id}" ${S.tokens >= HARVEST.auras[a.id] ? '' : 'disabled'}>${fmt(HARVEST.auras[a.id])} tokens</button>`,
+        `<canvas class="thumb" width="48" height="48" data-a="${a.id}" data-u="0"></canvas>`)),
+    ];
   },
   settings() {
     const st = S.set;
-    return [`<p class="lede" data-k="head">Keys: Space draw · A auto · 1–6 tabs · Esc closes · \` opens the command bar.</p>`,
+    return [`<p class="lede" data-k="head">Keys: Space draw · A auto · 1–7 tabs · Esc closes · \` opens the command bar.</p>`,
       `<div class="row" data-k="s-pop"><div class="info"><b>Popups</b><span>Name spins, full-screen reveal slips and rare-draw toasts. Off keeps drawing quiet; rare draws still land in your bag and the recent list.</span></div>${chk('popups', st.popups)}</div>`,
       `<div class="row" data-k="s-quiet"><div class="info"><b>Quiet auto-draw</b><span>No popups while auto-draw is on, popups again when you draw by hand.</span></div>${chk('autoQuiet', st.autoQuiet)}</div>`,
       `<div class="row" data-k="s-music"><div class="info"><b>Music</b><span>"yoiyami core theme" by Yoiyami (CC0). ${st.musicVol}%</span></div><div class="btns">${chk('music', st.music)}<input type="range" min="0" max="100" data-set="musicVol" value="${st.musicVol}"></div></div>`,
@@ -286,6 +305,7 @@ function renderStats() {
   if (drawN() > 1) chips.push(`<span>×${drawN()} per draw</span>`);
   for (const [id, u] of Object.entries(S.active)) if (u > now) chips.push(`<span>${CH[id].name} ${left(u - now)}</span>`);
   if (S.slip) chips.push(`<span>${CH[S.slip].name} ready</span>`);
+  if (lanternOn()) chips.push(`<span>Harvest Lantern ${left(S.lantern - now)}</span>`);
   if (S.adminLuck > 1) chips.push(`<span class="hot">Admin luck ×${short2(S.adminLuck)}</span>`);
   if (S.up.fortune) { const l = 10 - (S.rolls % 10); chips.push(`<span class="${l === 1 ? 'hot' : ''}">${l === 1 ? `Tenth bell ×${S.up.fortune + 1} next!` : `Tenth bell in ${l}`}</span>`); }
   const eq = S.equipped ? AURA[S.equipped] : null;
@@ -358,7 +378,7 @@ function act(kind, id) {
     if (id === 'auto') { S.auto = true; toast('The shrine helper will draw for you. Toggle it under the button (or press A).'); }
     if (id === 'multi' && (!S.drawSize || S.drawSize === l + 1)) S.drawSize = null; // follow the max unless set lower
   } else if (kind === 'charm') {
-    const c = CH[id]; if (!canPay(c.need, c.mon) || (c.ev && !eventOn())) { sfx.deny(); return; }
+    const c = CH[id]; if (!canPay(c.need, c.mon)) { sfx.deny(); return; }
     pay(c.need, c.mon); S.charms[id] = (S.charms[id] || 0) + 1; sfx.craft(); toast(`Folded a ${c.name}.`);
   } else if (kind === 'use') {
     const c = CH[id]; if (!(S.charms[id] > 0)) return;
@@ -366,15 +386,29 @@ function act(kind, id) {
     else { const now = Date.now(); S.active[id] = Math.min(Math.max(S.active[id] || 0, now) + c.secs * 1000, now + 30 * 60 * 1000); }
     S.charms[id]--; sfx.craft();
   } else if (kind === 'forge') {
-    const g = GR[id]; if (S.owned[id] || !canPay(g.need, g.mon)) { sfx.deny(); return; }
+    const g = GR[id]; if (S.owned[id] || g.tokens || !canPay(g.need, g.mon)) { sfx.deny(); return; }
     pay(g.need, g.mon); S.owned[id] = true; S.gear[g.slot] = id; sfx.craft(); toast(`Crafted ${g.name} and put it on.`);
   } else if (kind === 'gear') {
     const g = GR[id]; S.gear[g.slot] = S.gear[g.slot] === id ? null : id; sfx.click();
+  } else if (kind === 'tab') { setTab(id); return; }
+  else if (kind === 'lantern') {
+    const L = HARVEST.lantern, now = Date.now();
+    if (S.mon < L.mon || S.lantern - now > (L.max - L.secs) * 1000) { sfx.deny(); return; }
+    S.mon -= L.mon; S.lantern = Math.max(S.lantern, now) + L.secs * 1000; sfx.craft(); toast('The Harvest Lantern is lit: festival auras can roll.');
+  } else if (kind === 'buyaura') {
+    const price = HARVEST.auras[id]; if (!price || S.tokens < price) { sfx.deny(); return; }
+    S.tokens -= price; S.inv[id] = (S.inv[id] || 0) + 1; if (!S.found[id]) S.found[id] = S.rolls || 1; sfx.buy(); toast(`Bought ${AURA[id].name}.`);
+  } else if (kind === 'buybasket') {
+    if (S.tokens < HARVEST.basket) { sfx.deny(); return; }
+    S.tokens -= HARVEST.basket; S.charms.basket = (S.charms.basket || 0) + 1; sfx.buy(); toast('Bought a Harvest Basket.');
+  } else if (kind === 'buygear') {
+    const g = GR[id]; if (!g?.tokens || S.owned[id] || S.tokens < g.tokens) { sfx.deny(); return; }
+    S.tokens -= g.tokens; S.owned[id] = true; S.gear[g.slot] = id; sfx.craft(); toast(`Bought ${g.name} and put it on.`);
   } else if (kind === 'dialmax') { S.dial = null; sfx.click(); }
   else if (kind === 'gift') {
     if (!eventOn() || S.gift === today()) return;
-    S.gift = today(); S.mon += EVENT.gift.mon; S.charms[EVENT.gift.charm] = (S.charms[EVENT.gift.charm] || 0) + 1;
-    sfx.craft(); toast(`Harvest gift: ${EVENT.gift.mon} mon and a ${CH[EVENT.gift.charm].name}.`);
+    S.gift = today(); S.mon += EVENT.gift.mon; S.tokens += HARVEST.giftTokens; S.charms[EVENT.gift.charm] = (S.charms[EVENT.gift.charm] || 0) + 1;
+    sfx.craft(); toast(`Harvest gift: ${EVENT.gift.mon} mon, ${HARVEST.giftTokens} harvest tokens and a ${CH[EVENT.gift.charm].name}.`);
   } else if (kind === 'export') {
     const code = btoa(unescape(encodeURIComponent(JSON.stringify(S))));
     navigator.clipboard?.writeText(code).then(() => toast('Save code copied.'), () => prompt('Copy your save code:', code));
@@ -426,7 +460,7 @@ addEventListener('keydown', e => {
   if (e.target.closest('input, textarea, select')) return;
   if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); if (skipCut) skipCut(); else if (!e.repeat || S.up.speed > 0) roll(); }
   if (e.code === 'KeyA' && S.up.auto) { S.auto = !S.auto; save(); renderStats(); }
-  const n = +e.key; if (n >= 1 && n <= 6) setTab(Object.keys(TABS)[n - 1]);
+  const n = +e.key; if (n >= 1 && n <= 7) setTab(Object.keys(TABS)[n - 1]);
 });
 $('#lbform').addEventListener('submit', e => {
   e.preventDefault();
@@ -442,7 +476,7 @@ $('#lbform').addEventListener('submit', e => {
 const ADM = 'lucklight.admin';
 let adminKey = null; try { adminKey = localStorage.getItem(ADM); } catch {}
 const out = (msg, cls = '') => { const d = document.createElement('div'); d.className = cls; d.textContent = msg; $('#conlog').append(d); $('#conlog').scrollTop = 1e9; };
-function openConsole() { $('#console').hidden = false; $('#conin').focus(); if (!$('#conlog').childElementCount) out(adminKey ? 'Admin unlocked. Type help.' : 'Type: admin <key>'); }
+function openConsole() { $('#console').hidden = false; $('#conin').focus(); if (!$('#conlog').childElementCount) out(adminKey ? 'Admin unlocked. Start typing for suggestions, or type help.' : 'Type: admin <key>'); suggest(); }
 function closeConsole() { $('#console').hidden = true; $('#conin').blur(); }
 async function adminApi(body) {
   const r = await fetch('/api/admin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: adminKey, ...body }) });
@@ -450,17 +484,40 @@ async function adminApi(body) {
 }
 const findAura = s => { s = s.trim().toLowerCase(); return AURA[s] || AURAS.find(a => a.name.toLowerCase() === s) || AURAS.find(a => a.id.startsWith(s.replace(/\s+/g, '-')) || a.name.toLowerCase().startsWith(s)); };
 const num = s => { const m = String(s).trim().toLowerCase().match(/^([\d.]+)\s*([kmb]?)$/); return m ? +m[1] * ({ k: 1e3, m: 1e6, b: 1e9 }[m[2]] || 1) : NaN; };
-const HELP = [
-  'give <aura> [count]      add auras (name or id)', 'mon <n> / setmon <n>     add or set mon (1.5m, 2b ok)',
-  'luck <n> | luck off      extra admin luck multiplier', 'roll <n>                 roll n auras instantly (max 1m)',
-  'up <id> <level>          set an upgrade (luck speed fortune multi auto)', 'maxall                   max every upgrade',
-  'charm <id> [n]           add charms (paper red gold heaven star basket)', 'gear all                 own all gear',
-  'unlock all               find every aura once', 'wear <aura>              wear any aura you hold',
-  'reveal <aura>            preview a reveal', 'event on|off|auto        force the festival',
-  'gift reset               reclaim today\'s festival gift', 'board remove <name>      delete a board entry',
-  'untaint                  allow board posts again', 'wipe confirm             reset this save', 'logout                   forget the admin key',
+const CMDS = [
+  ['help', '', 'list every command'], ['give', '<aura> [count]', 'add auras by name or id', 'aura'],
+  ['mon', '<amount>', 'add mon (1.5m, 2b work)'], ['setmon', '<amount>', 'set mon exactly'],
+  ['tokens', '<amount>', 'add harvest tokens'], ['lantern', '<minutes>', 'light the Harvest Lantern'],
+  ['luck', '<multiplier> | off', 'extra admin luck', 'luck'], ['roll', '<count>', 'roll up to 1m auras instantly'],
+  ['up', '<upgrade> <level>', 'set an upgrade level', 'up'], ['maxall', '', 'max every upgrade'],
+  ['charm', '<charm> [count]', 'add charms', 'charm'], ['gear', 'all', 'own every gear piece', 'gear'],
+  ['unlock', 'all', 'find every aura once', 'unlock'], ['wear', '<aura>', 'wear an aura you hold', 'aura'],
+  ['reveal', '<aura>', 'preview its reveal', 'aura'], ['event', 'on | off | auto', 'force the festival', 'event'],
+  ['gift', 'reset', "reclaim today's gift", 'gift'], ['board', 'remove <name>', 'delete a board entry', 'board'],
+  ['untaint', '', 'allow board posts again'], ['wipe', 'confirm', 'reset this save', 'wipe'], ['logout', '', 'forget the admin key'],
 ];
-const TAINT = new Set(['give', 'mon', 'setmon', 'luck', 'up', 'maxall', 'charm', 'gear', 'unlock']);
+const HELP = CMDS.map(([c, a, d]) => `${(c + ' ' + a).padEnd(26)}${d}`);
+const ARGS = {
+  aura: () => AURAS.map(a => a.name), luck: () => ['off', '10', '100', '1000'], up: () => UPGRADES.map(u => u.id),
+  charm: () => CHARMS.map(c => c.id), gear: () => ['all'], unlock: () => ['all'], event: () => ['on', 'off', 'auto'],
+  gift: () => ['reset'], board: () => ['remove'], wipe: () => ['confirm'],
+};
+let sugs = [], sugI = 0;
+function suggest() {
+  const v = $('#conin').value, box = $('#consug');
+  if (!adminKey) sugs = [{ fill: 'admin ', label: 'admin <key>', d: 'unlock admin commands (key is in .admin-key)' }];
+  else if (!v.includes(' ')) sugs = CMDS.filter(([c]) => c.startsWith(v.toLowerCase())).map(([c, a, d]) => ({ fill: c + (a ? ' ' : ''), label: `${c} ${a}`, d }));
+  else {
+    const [c, ...rest] = v.split(' '), arg = rest.join(' ').toLowerCase(), def = CMDS.find(x => x[0] === c.toLowerCase());
+    sugs = def?.[3] ? ARGS[def[3]]().filter(x => x.toLowerCase().startsWith(arg) && x.toLowerCase() !== arg).slice(0, 8).map(x => ({ fill: `${c} ${x}${def[3] === 'aura' && c === 'give' ? ' ' : ''}`, label: `${c} ${x}`, d: def[2] }))
+      : def ? [{ fill: v, label: `${def[0]} ${def[1]}`, d: def[2] }] : [];
+  }
+  sugs = sugs.slice(0, 8); sugI = Math.min(sugI, Math.max(0, sugs.length - 1));
+  box.innerHTML = sugs.map((x, i) => `<div class="${i === sugI ? 'on' : ''}" data-i="${i}"><b>${esc(x.label)}</b><span>${esc(x.d)}</span></div>`).join('');
+  box.hidden = !sugs.length;
+}
+const takeSug = i => { if (!sugs[i]) return; $('#conin').value = sugs[i].fill; sugI = 0; suggest(); $('#conin').focus(); };
+const TAINT = new Set(['give', 'mon', 'setmon', 'tokens', 'luck', 'up', 'maxall', 'charm', 'gear', 'unlock']);
 async function command(line) {
   const [cmd, ...args] = line.trim().split(/\s+/), rest = args.join(' ');
   if (!cmd) return;
@@ -509,6 +566,8 @@ async function command(line) {
       const r = await adminApi({ cmd: 'remove', name: args.slice(1).join(' ') });
       out(r.ok ? `Removed ${r.removed} entr${r.removed === 1 ? 'y' : 'ies'}.` : `Failed: ${r.error}`, r.ok ? 'ok' : 'err'); if (tab === 'board') loadBoard(); break;
     }
+    case 'tokens': { const n = num(rest); if (isNaN(n)) return out('Usage: tokens <amount>', 'err'); S.tokens += n; out(`Harvest tokens: ${fmt(S.tokens)}`, 'ok'); break; }
+    case 'lantern': { const m = num(rest || '5'); if (!(m > 0)) return out('Usage: lantern <minutes>', 'err'); S.lantern = Math.max(S.lantern, Date.now()) + m * 6e4; out(`Harvest Lantern lit for ${left(S.lantern - Date.now())}.`, 'ok'); break; }
     case 'untaint': S.tainted = false; out('Board posts allowed again.', 'ok'); break;
     case 'wipe': if (rest !== 'confirm') return out('Type: wipe confirm', 'err'); S = Object.assign(fresh(), { pid: S.pid, name: S.name }); out('Save wiped.', 'ok'); break;
     case 'logout': adminKey = null; try { localStorage.removeItem(ADM); } catch {} out('Admin key forgotten.', 'ok'); break;
@@ -516,24 +575,30 @@ async function command(line) {
   }
   save(); refresh();
 }
-$('#conform').addEventListener('submit', e => { e.preventDefault(); const v = $('#conin').value; $('#conin').value = ''; command(v); });
+$('#conform').addEventListener('submit', e => { e.preventDefault(); const v = $('#conin').value; $('#conin').value = ''; sugI = 0; command(v).then(suggest); });
+$('#conin').addEventListener('input', () => { sugI = 0; suggest(); });
+$('#conin').addEventListener('keydown', e => {
+  if (e.key === 'Tab') { e.preventDefault(); takeSug(sugI); }
+  else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && sugs.length) { e.preventDefault(); sugI = (sugI + (e.key === 'ArrowDown' ? 1 : sugs.length - 1)) % sugs.length; suggest(); }
+});
+$('#consug').addEventListener('pointerdown', e => { const d = e.target.closest('[data-i]'); if (d) { e.preventDefault(); takeSug(+d.dataset.i); } });
 
 // ---------- loop
 const stage = $('#stage').getContext('2d'), cutCtx = $('#cutcv').getContext('2d');
 let lastThumb = 0, lastSec = 0;
 function frame(now) {
   const t = now / 1000;
-  drawStage(stage, S.equipped ? AURA[S.equipped] : null, t, eventOn());
+  drawStage(stage, S.equipped ? AURA[S.equipped] : null, t, harvestOn());
   if (S.auto && S.up.auto && !revealing && now >= readyAt) roll();
   const cd = Math.max(1, readyAt - rollStart), p = Math.min(1, (now - rollStart) / cd);
   $('#rollbar').style.transform = `scaleX(${revealing ? 0 : p})`;
   if (cutAura) drawThumb(cutCtx, cutAura, t);
-  if (tab === 'index' && now - lastThumb > 66) {
+  if ((tab === 'index' || tab === 'market') && now - lastThumb > 66) {
     lastThumb = now;
     const lr = $('#tab-list').getBoundingClientRect(), top = Math.max(lr.top, 0), bot = Math.min(lr.bottom, innerHeight);
     for (const cv of document.querySelectorAll('canvas.thumb')) { const r = cv.getBoundingClientRect(); if (r.bottom > top && r.top < bot) drawThumb(cv.getContext('2d'), AURA[cv.dataset.a], t, cv.dataset.u === '1'); }
   }
-  if (now - lastSec > 1000) { lastSec = now; renderStats(); if (tab === 'charms') refresh(); if (tab === 'board' && (lbTimer += 1) % 30 === 0) loadBoard(); }
+  if (now - lastSec > 1000) { lastSec = now; renderStats(); if (tab === 'charms' || tab === 'market') refresh(); if (tab === 'board' && (lbTimer += 1) % 30 === 0) loadBoard(); }
   requestAnimationFrame(frame);
 }
 

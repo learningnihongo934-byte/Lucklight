@@ -203,6 +203,12 @@ body.shake main { animation: shake .35s steps(3) 3; }
 #conlog .me { color: #a8a4c8; } #conlog .ok { color: #9fd06a; } #conlog .err { color: #ff8a7a; }
 #conform { display: flex; gap: 6px; border-top: 2px solid #2a2433; padding: 6px 10px; }
 #conform span { color: var(--gold); }
+#consug { border-top: 2px solid #2a2433; max-height: 240px; overflow-y: auto; }
+#consug div { display: flex; gap: 12px; padding: 4px 10px; cursor: pointer; }
+#consug div b { font-weight: 400; color: #ffe68a; white-space: nowrap; }
+#consug div span { color: #8a86a8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#consug div.on, #consug div:hover { background: #2a2433; }
+.lede .tok { font-weight: 400; color: #8a3a10; }
 #conin { flex: 1; background: none; border: 0; outline: none; color: inherit; }
 #cut.show { cursor: pointer; }
 
