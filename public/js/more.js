@@ -119,8 +119,8 @@ export const GEN = [];
 // ---------- Harvest Festival (Thanksgiving 2026). Rollable only while the event runs; kept forever once found.
 export const EVENT = {
   id: 'harvest', name: 'Harvest Festival',
-  start: Date.UTC(2026, 10, 15, 8), end: Date.UTC(2026, 11, 1, 8), // Nov 15 – Nov 30 (Pacific)
-  day: Date.UTC(2026, 10, 26, 8), luck: 1.25, gift: { mon: 300, charm: 'red' },
+  start: Date.UTC(2026, 10, 14, 6), end: Date.UTC(2026, 11, 1, 6), // Nov 14 – Nov 30, midnight Central
+  day: Date.UTC(2026, 10, 26, 6), luck: 1.25, gift: { mon: 300, charm: 'red' },
 };
 const ev = (name, n, fx, pal, tint) => ({ id: slug(name), name, n, fx, c: P[pal], ev: EVENT.id, ...(tint ? { tint: hexA(P[pal][0], tint) } : {}) });
 export const EVENT_AURAS = [

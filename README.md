@@ -12,7 +12,7 @@ Live at **https://lucklight.rennko.tech**. It's also a cabinet in [Rennko Arcade
 - **Craft**: make gear for your hand and neck slots for permanent luck and speed.
 - **Luck dial**: turn your base luck down (from ×1 up to your max) to grind smaller auras.
 - **Multi-draw**: buy it level by level (99 levels) until every draw rolls up to 100 auras at once.
-- **Harvest Festival** (Thanksgiving, Nov 15–30 2026): 10 limited auras, autumn shrine, festival luck ×1.25, a daily gift and the Harvest Basket charm.
+- **Harvest Festival** (Thanksgiving, Nov 14–30 2026, Central time): 10 limited auras, autumn shrine, festival luck ×1.25, a daily gift and the Harvest Basket charm.
 - **Board**: global leaderboard for rarest aura and most rolls.
 - **Settings**: auto-wear, reveal mode (always / new only / off, click to skip), stop auto-draw on a rarity or new aura, volume, save export/import.
 - **Admin command bar** (press `` ` ``): `admin <key>` unlocks `give`, `mon`, `luck`, `roll`, `up`, `maxall`, `charm`, `gear all`, `unlock all`, `wear`, `reveal`, `event on|off|auto`, `board remove <name>` and more (`help`). The key is the Worker secret `ADMIN_KEY` (kept locally in the gitignored `.admin-key`). Saves that use progress commands are marked admin and don't post to the board.
