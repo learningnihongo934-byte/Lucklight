@@ -349,6 +349,13 @@ const GLYPH = {
   moth: ['1.1', '121', '1.1'],
   ghost: ['.111.', '12121', '11111', '1.1.1'],
   drum: ['.111.', '12321', '.111.'],
+  acorn: ['.00.', '0110', '1221', '1221', '.11.'],
+  corn: ['.0.', '121', '232', '121', '232', '.1.'],
+  pumpkin: ['..0..', '.121.', '12321', '12121', '.111.'],
+  pie: ['.333.', '32223', '11111'],
+  wishbone: ['2...2', '.2.2.', '..2..', '..2..'],
+  maple: ['..2..', '2.2.2', '.222.', '22222', '..1..'],
+  turkey: ['2.3.3.2', '.32223.', '3211123', '.21012.', '..111..', '..1.1..'],
 };
 function glyph(name, x, y, a, i = 0, flip = false) {
   let g = GLYPH[name]; if (Array.isArray(g[0])) g = g[i % g.length];
@@ -529,12 +536,23 @@ function layers(a) {
 const runFx = (a, t, cx, cy, L) => { for (const l of layers(a)) FX[l.p.f](l.a, t, cx, cy, L, l.p); };
 const tintOf = a => a.tint || TINT[a.id];
 
-// full stage: scene + aura + hero. a = aura object or null
-export function drawStage(ctx, a, t) {
+// Harvest Festival dressing: falling maple leaves and pumpkins by the lanterns
+const AUTUMN = { c: ['#5a1a0a', '#c84a1a', '#f09a2a', '#ffe68a'] }, PUMPKIN = { c: ['#3a5a1a', '#c86a1a', '#f0a040', '#ffe0a0'] };
+function harvest(t) {
+  for (const [x, y] of [[26, 89], [10, 90], [134, 89], [150, 90]]) glyph('pumpkin', x, y, PUMPKIN);
+  for (let i = 0; i < 12; i++) {
+    const ph = (t / (6 + R(i, 20) * 4) + R(i, 21)) % 1;
+    glyph('maple', ((R(i, 22) * 200 + ph * 50 + Math.sin(t + i) * 6) % 180) - 10, ph * 104 - 6, AUTUMN, i);
+  }
+}
+
+// full stage: scene + aura + hero. a = aura object or null. ev = Harvest Festival running
+export function drawStage(ctx, a, t, ev) {
   C = ctx; ctx.imageSmoothingEnabled = false;
   if (!sceneCache) sceneCache = buildScene();
   ctx.drawImage(sceneCache, 0, 0);
   sceneLive(t);
+  if (ev) harvest(t);
   if (a && tintOf(a)) { ctx.fillStyle = tintOf(a); ctx.fillRect(0, 0, W, H); }
   if (a) runFx(a, t, HERO_X, HERO_Y, 'b');
   hero(HERO_X, HERO_Y + (Math.floor(t * 1.4) % 2 === 0 ? 0 : 0), t);

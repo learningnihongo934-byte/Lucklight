@@ -1,8 +1,10 @@
 // Lucklight sound: small WebAudio synth. No files.
-let ac = null, master = null, muted = false;
-export const setMuted = m => { muted = m; if (master) master.gain.value = m ? 0 : 0.5; };
+let ac = null, master = null, muted = false, vol = 0.5;
+const apply = () => { if (master) master.gain.value = muted ? 0 : vol; };
+export const setMuted = m => { muted = m; apply(); };
+export const setVolume = v => { vol = v; apply(); };
 function ctx() {
-  if (!ac) { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = muted ? 0 : 0.5; master.connect(ac.destination); }
+  if (!ac) { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = muted ? 0 : vol; master.connect(ac.destination); }
   if (ac.state === 'suspended') ac.resume();
   return ac;
 }

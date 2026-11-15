@@ -29,13 +29,36 @@ export class Board {
       else this.sql.exec(`INSERT INTO p (id, name, best, n, rolls, t) VALUES (?, ?, ?, ?, ?, ?)`, id, name, b.best, n, rolls, now);
       return json({ ok: true });
     }
+    // internal only: the Worker forwards here after checking the admin key (not reachable under /api/)
+    if (url.pathname === '/internal/remove' && req.method === 'POST') {
+      const { name } = await req.json();
+      const n = this.sql.exec(`SELECT COUNT(*) AS c FROM p WHERE name = ?`, name).toArray()[0].c;
+      this.sql.exec(`DELETE FROM p WHERE name = ?`, name);
+      return json({ ok: true, removed: n });
+    }
     return json({ error: 'not found' }, 404);
   }
+}
+
+// constant-time-ish compare for the admin key
+const same = (a, b) => { if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false; let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; };
+
+async function admin(req, env) {
+  if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
+  let b; try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+  if (!env.ADMIN_KEY || !same(b.key, env.ADMIN_KEY)) return json({ error: 'bad key' }, 403);
+  if (b.cmd === 'check') return json({ ok: true });
+  if (b.cmd === 'remove' && typeof b.name === 'string' && b.name.trim()) {
+    const stub = env.BOARD.get(env.BOARD.idFromName('global'));
+    return stub.fetch('https://board/internal/remove', { method: 'POST', body: JSON.stringify({ name: b.name.trim().slice(0, 16) }) });
+  }
+  return json({ error: 'unknown command' }, 400);
 }
 
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
+    if (url.pathname === '/api/admin') return admin(req, env);
     if (url.pathname.startsWith('/api/')) return env.BOARD.get(env.BOARD.idFromName('global')).fetch(req);
     return env.ASSETS.fetch(req);
   },

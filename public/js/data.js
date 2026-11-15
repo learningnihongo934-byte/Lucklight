@@ -2,8 +2,10 @@
 
 // n = base odds "1 in n". c = pixel palette (dark -> light).
 // fx = effect name in fx.js, or a list of layers: names or { f, ...params, c? } (c overrides the palette for that layer)
+import { GEN, EVENT, EVENT_AURAS } from './more.js';
+export { EVENT };
 const A = (id, name, n, fx, c, tint) => ({ id, name, n, fx, c, ...(tint ? { tint } : {}) });
-export const AURAS = [
+const BASE = [
   A('dust', 'Dust', 2, 'motes', ['#6f6658', '#a89c86', '#d6cbb3']),
   A('pebble', 'Pebble', 3, [{ f: 'orbit', n: 4, r: 13, ry: 3, y: 6, sp: 0.6 }], ['#4a443c', '#7a7266', '#a39a8a', '#c8bfae']),
   A('breeze', 'Breeze', 4, [{ f: 'breeze', n: 6 }], ['#8aa0a8', '#b8ccd0', '#dceaea', '#ffffff']),
@@ -103,8 +105,10 @@ export const AURAS = [
   A('infinity', 'Infinity', 650000000, [{ f: 'galaxy', arms: 2, r: 30, flat: 0.4, sp: -0.5 }, { f: 'infinity', r: 30 }, { f: 'infinity', r: 20 }], ['#1a0a3a', '#8a5ae0', '#e0b0ff', '#ffffff'], 'rgba(20,0,40,0.4)'),
   A('paradox', 'Paradox', 900000000, ['void', 'glitch', { f: 'infinity', r: 26 }], ['#ffffff', '#000000', '#ff3a6a', '#3affe0'], 'rgba(255,255,255,0.12)'),
   A('omen', 'Omen', 1200000000, ['eclipse', { f: 'eyes', n: 18, w: 100 }, { f: 'orbit', g: 'link', n: 14, r: 20, ry: 5, sp: 0.8, bob: 0 }], ['#000000', '#3a0006', '#ff2a2a', '#ffd0c0'], 'rgba(30,0,0,0.6)'),
-  A('lucklight', 'Lucklight', 1500000000, 'lucklight', ['#ff6a5a', '#ffc04a', '#8ae06a', '#5ac8ff', '#b88aff', '#fff6d0']),
+  A('lucklight', 'Lucklight', 7700000000, 'lucklight', ['#ff6a5a', '#ffc04a', '#8ae06a', '#5ac8ff', '#b88aff', '#fff6d0']),
 ];
+// all auras sorted by odds; event auras carry ev and only roll while their event runs
+export const AURAS = [...BASE, ...GEN, ...EVENT_AURAS].sort((a, b) => a.n - b.n);
 export const AURA = Object.fromEntries(AURAS.map(a => [a.id, a]));
 
 // mon (shrine coins) earned for drawing an aura
@@ -125,6 +129,7 @@ export const UPGRADES = [
   { id: 'luck',    name: 'Prayer',        max: 25, cost: l => Math.round(20 * 1.65 ** l),  desc: l => `Luck x${(1.15 ** l).toFixed(2)} → x${(1.15 ** (l + 1)).toFixed(2)}` },
   { id: 'speed',   name: 'Quick Hands',   max: 12, cost: l => Math.round(30 * 1.8 ** l),   desc: l => `Draw every ${(cooldownBase(l) / 1000).toFixed(2)}s → ${(cooldownBase(l + 1) / 1000).toFixed(2)}s` },
   { id: 'fortune', name: 'Tenth Bell',    max: 9,  cost: l => Math.round(200 * 2.2 ** l), desc: l => `Every 10th draw: luck x${l + 1} → x${l + 2}` },
+  { id: 'multi',   name: 'Multi-draw',    max: 99, cost: l => Math.round(100 * 1.13 ** l), desc: l => `Each draw rolls ${l + 1} → ${l + 2} auras` },
   { id: 'auto',    name: 'Shrine Helper', max: 1,  cost: () => 250,                         desc: () => 'Unlocks auto-draw' },
 ];
 export const cooldownBase = l => 1100 * 0.9 ** l;
@@ -137,6 +142,7 @@ export const CHARMS = [
   { id: 'red',    name: 'Red Charm',   mult: 3,    secs: 120, need: { rain: 6, firefly: 3, ember: 1 },     mon: 120 },
   { id: 'gold',   name: 'Gold Charm',  mult: 4,    secs: 180, need: { sakura: 3, frost: 2, tide: 1 },      mon: 900 },
   { id: 'heaven', name: 'Heaven Slip', mult: 250,  once: true, need: { frost: 4, thunder: 1, lantern: 1 }, mon: 6000 },
+  { id: 'basket', name: 'Harvest Basket', mult: 3, secs: 300, need: { acorn: 8, 'corn-husk': 4, cranberry: 1 }, mon: 300, ev: 'harvest' },
   { id: 'star',   name: 'Star Slip',   mult: 4000, once: true, need: { kitsune: 1, eclipse: 1, comet: 1 }, mon: 80000 },
 ];
 
