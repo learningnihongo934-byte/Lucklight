@@ -262,7 +262,13 @@ function patch(el, rows) {
   const tmp = document.createElement('div'); tmp.innerHTML = rows.join('');
   const nk = [...tmp.children];
   if (el.children.length !== nk.length || [...el.children].some((c, i) => c.dataset.k !== nk[i].dataset.k)) { el.replaceChildren(...nk); return; }
-  nk.forEach((n, i) => { const o = el.children[i]; if (o.outerHTML !== n.outerHTML && !o.contains(document.activeElement)) o.replaceWith(n); });
+  nk.forEach((n, i) => {
+    const o = el.children[i]; if (o.outerHTML === n.outerHTML || o.contains(document.activeElement)) return;
+    // keep the already-painted aura preview so cards don't flash when their count changes
+    const oc = o.querySelector('canvas.thumb'), nc = n.querySelector('canvas.thumb');
+    if (oc && nc && oc.dataset.a === nc.dataset.a && oc.dataset.u === nc.dataset.u) nc.replaceWith(oc);
+    o.replaceWith(n);
+  });
 }
 
 function renderStats() {
