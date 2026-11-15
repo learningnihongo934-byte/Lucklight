@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Lucklight</title>
-<meta name="description" content="Draw fortunes at a night shrine. Collect 400 pixel auras, from Dust (1 in 2) to Lucklight (1 in 7.7 billion).">
+<meta name="description" content="Draw fortunes at a night shrine. Collect 1,000 pixel auras, from Dust (1 in 2) to Lucklight (1 in a trillion). 50 legends with their own films.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%231b1e38'/%3E%3Crect x='1' y='3' width='14' height='2' fill='%23b8342a'/%3E%3Crect x='0' y='2' width='16' height='1' fill='%231a1420'/%3E%3Crect x='3' y='6' width='10' height='1' fill='%23b8342a'/%3E%3Crect x='4' y='5' width='2' height='11' fill='%23b8342a'/%3E%3Crect x='10' y='5' width='2' height='11' fill='%23b8342a'/%3E%3Crect x='7' y='9' width='2' height='4' fill='%23f6c25a'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,6 +28,8 @@
     <div class="stagewrap">
       <canvas id="stage" width="160" height="120"></canvas>
       <div id="buffs" class="buffs"></div>
+      <div id="world" class="world"></div>
+      <div id="pops" class="pops"></div>
     </div>
     <div class="drawrow">
       <div id="slip" class="slip"><div class="grade">吉</div><div class="nm">Draw your first fortune</div><div class="odds">Press the box or Space</div></div>
@@ -42,7 +44,7 @@
   <aside id="panel" class="panel">
     <nav id="tabs" class="tabs"></nav>
     <div id="colbar" class="colbar"><input id="q" type="search" placeholder="Search found auras or odds" autocomplete="off">
-      <select id="flt"><option value="all">All</option><option value="found">Found</option><option value="missing">Missing</option><option value="event">Festival</option></select></div>
+      <select id="flt"><option value="all">All</option><option value="found">Found</option><option value="missing">Missing</option><option value="legend">Legends</option><option value="event">Festival</option></select></div>
     <div id="tab-list" class="list"></div>
     <div id="tab-board" class="board" hidden>
       <form id="lbform" class="lbform">
@@ -65,6 +67,14 @@
     <div class="nm"></div><div class="odds"></div><div class="new" hidden>First time</div>
   </div>
 </div>
+<div id="film" hidden><canvas id="filmcv" width="192" height="108"></canvas>
+  <div class="film-top"><span class="film-tag">Legend</span><span id="film-odds"></span></div>
+  <div id="film-name" class="film-name"></div>
+  <div id="film-text" class="film-text"></div>
+  <div class="film-skip">Click or press Space to skip</div>
+</div>
+<div id="tip" class="tip" hidden><p></p><div class="tbtns"><span class="tstep"></span><button data-tut="skip">Skip tour</button><button data-tut="next">Next</button></div></div>
+<div id="daymodal" class="modal" hidden><div class="mbox"><h3>Login bonus</h3><p class="big">Day <b id="dayn"></b></p><p id="dayr"></p><button data-act="streak">Claim</button></div></div>
 <div id="toast" class="toast"></div>
 <div id="console" class="console" hidden><div id="conlog"></div><div id="consug" hidden></div><form id="conform"><span>&gt;</span><input id="conin" autocomplete="off" spellcheck="false" placeholder="type a command, Tab completes"></form></div>
 <footer class="foot">Made by Virat Reddy Kaukuntla · <a href="https://rennko.tech">rennko.tech</a></footer>

@@ -29,37 +29,54 @@ const HERO = [
   '.krrrrrrk.', '.krrrrrrk.', '.kbbbbbbk.', '.kbbkkbbk.', '.kbk..kbk.', '.kkk..kkk.',
 ];
 const HP = { k: '#1a1420', h: '#2b2238', s: '#f0c8a0', e: '#1a1420', w: '#efe6d2', r: '#b8342a', b: '#2a3a6a' };
-function hero(cx, cy, t, sil) {
+function hero(cx, cy, t, sil, pal) {
   const blink = (t % 4.3) < 0.13, ox = cx - 5, oy = cy - 9;
   for (let y = 0; y < HERO.length; y++) for (let x = 0; x < 10; x++) {
     let ch = HERO[y][x]; if (ch === '.') continue;
     if (ch === 'e' && blink) ch = 's';
-    px(ox + x, oy + y, sil || HP[ch]);
+    px(ox + x, oy + y, sil || (pal && pal[ch]) || HP[ch]);
   }
 }
 
-// ---------- scene (static part cached)
-let sceneCache = null;
-function buildScene() {
+// ---------- scene: one cached backdrop per biome, plus live bits (stars, lanterns, koi, lava)
+const BIOME_ART = {
+  shrine: { sky: ['#141833', '#1a1e3e', '#222548', '#2c2c54', '#3a345e', '#4a3f66'], h1: '#262645', h2: '#1b1b33', g: ['#4d4a58', '#57535f', '#3a3744', '#6a6676'], moon: [128, 20, 7] },
+  bamboo: { sky: ['#0c1a1a', '#10221e', '#163026', '#1c3a2c', '#244432', '#2e4e38'], h1: '#14281e', h2: '#0e1e16', g: ['#3a4a34', '#44543c', '#2a3626', '#56664a'], moon: [128, 18, 6] },
+  snow: { sky: ['#1a2440', '#22304e', '#2c3c5c', '#3a4c6c', '#4c5e7c', '#62728c'], h1: null, h2: null, g: ['#c8d4e4', '#d8e2ee', '#a8b8cc', '#eef4fa'], moon: [30, 16, 6] },
+  sky: { sky: ['#1a1040', '#2a1a5a', '#3c2670', '#5a3a84', '#7a5096', '#a06aa0'], h1: null, h2: null, g: ['#8a8494', '#9a94a4', '#6a6474', '#b0aaba'], moon: [128, 20, 7] },
+  koi: { sky: ['#0a1830', '#0e2038', '#142a44', '#1c3450', '#263e5a', '#324a64'], h1: '#1a2a40', h2: '#122236', g: ['#4d4a58', '#57535f', '#3a3744', '#6a6676'], moon: [128, 20, 7] },
+  moon: { sky: ['#0c0618', '#140a24', '#1e1030', '#2a163c', '#3a1e4a', '#4a2858'], h1: '#22163a', h2: '#170e2a', g: ['#3e3448', '#4a3e54', '#2e2638', '#5a4e66'], moon: [80, 30, 24] },
+  volcano: { sky: ['#1a0606', '#260a08', '#360e0a', '#4a140c', '#62200e', '#7a3010'], h1: '#2a0e0a', h2: '#1a0806', g: ['#2e2826', '#383230', '#1e1a18', '#4a3c34'], moon: [30, 16, 5] },
+};
+const sceneCache = {};
+function buildScene(b) {
+  const A = BIOME_ART[b] || BIOME_ART.shrine;
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const prev = C; C = cv.getContext('2d');
-  const bands = ['#141833', '#1a1e3e', '#222548', '#2c2c54', '#3a345e', '#4a3f66'];
-  for (let y = 0; y < 78; y++) {
-    const f = y / 78 * (bands.length - 1), i = Math.floor(f), fr = f - i;
-    for (let x = 0; x < W; x++) {
-      const d = ((x + y) % 2 === 0 ? 0.25 : 0.75) < fr; // ordered dither between bands
-      px(x, y, bands[Math.min(bands.length - 1, i + (d ? 1 : 0))]);
-    }
+  const bands = A.sky;
+  for (let y = 0; y < 92; y++) {
+    const f = Math.min(1, y / 78) * (bands.length - 1), i = Math.floor(f), fr = f - i;
+    for (let x = 0; x < W; x++) px(x, y, bands[Math.min(bands.length - 1, i + (((x + y) % 2 === 0 ? 0.25 : 0.75) < fr ? 1 : 0))]);
   }
-  // moon
-  disc(128, 20, 7, '#efe3c8'); px(125, 18, '#d8c9a6'); rect(129, 21, 2, 2, '#d8c9a6'); px(131, 17, '#d8c9a6');
-  // far hills + trees
-  for (let x = 0; x < W; x++) {
-    const h1 = 64 + Math.sin(x * 0.045) * 5 + Math.sin(x * 0.13 + 1) * 2;
-    rect(x, h1, 1, 92 - h1, '#262645');
-    const h2 = 74 + Math.sin(x * 0.09 + 2) * 3 + (R(x, 3) > 0.7 ? -2 : 0) + Math.abs(Math.sin(x * 0.6)) * -3;
-    rect(x, h2, 1, 92 - h2, '#1b1b33');
+  const [mx, my, mr] = A.moon, mc = b === 'volcano' ? '#f0a070' : '#efe3c8';
+  disc(mx, my, mr, mc); px(mx - 3, my - 2, '#d8c9a6'); rect(mx + 1, my + 1, 2, 2, '#d8c9a6');
+  if (b === 'moon') { for (let i = 0; i < 9; i++) disc(mx - 14 + R(i, 40) * 28, my - 12 + R(i, 41) * 24, 1 + Math.floor(R(i, 42) * 3), '#d8c9a6'); }
+  if (A.h1) for (let x = 0; x < W; x++) {
+    const h1 = 64 + Math.sin(x * 0.045) * 5 + Math.sin(x * 0.13 + 1) * 2; rect(x, h1, 1, 92 - h1, A.h1);
+    const h2 = 74 + Math.sin(x * 0.09 + 2) * 3 + (R(x, 3) > 0.7 ? -2 : 0) + Math.abs(Math.sin(x * 0.6)) * -3; rect(x, h2, 1, 92 - h2, A.h2);
   }
+  if (b === 'snow') for (const [cx, h] of [[24, 56], [70, 40], [128, 62], [168, 44]]) for (let y = 0; y < h; y++) { const w = y * 0.95; rect(cx - w, 92 - h + y, w * 2, 1, y < h * 0.3 ? '#eef4fa' : y % 7 === 0 ? '#5a6a88' : '#6a7a98'); }
+  if (b === 'volcano') { for (let x = 0; x < W; x++) { const h = Math.max(0, 62 - Math.abs(x - 40) * 1.2); rect(x, 92 - h, 1, h, '#1e0a08'); } rect(32, 30, 16, 2, '#f06a2a'); for (let y = 32; y < 70; y++) px(38 + Math.sin(y * 0.3) * 3, y, y % 3 ? '#c8401a' : '#f08a3a'); }
+  if (b === 'moon') { // pagoda silhouette
+    for (let k = 0; k < 5; k++) { const y = 40 + k * 10, w = 14 - k; rect(146 - w - 4, y, (w + 4) * 2, 2, '#120a1e'); rect(146 - w + 2, y + 2, (w - 2) * 2, 8, '#160c24'); }
+    rect(145, 30, 2, 10, '#120a1e');
+  }
+  if (b === 'bamboo') for (const [x0, n] of [[2, 6], [126, 6]]) for (let k = 0; k < n; k++) {
+    const x = x0 + k * 6 + (k % 2) * 2, c = k % 2 ? '#3a6a2a' : '#2a5420';
+    rect(x, 0, 3, 92, c); rect(x + 2, 0, 1, 92, '#1a3414');
+    for (let y = 6 + k * 3; y < 92; y += 12) { rect(x - 1, y, 5, 1, '#5a8a3a'); if (R(k, y) > 0.5) { px(x + 3, y - 1, '#6aa04a'); px(x + 4, y - 2, '#6aa04a'); px(x + 5, y - 2, '#4a8a2a'); } }
+  }
+  if (b === 'sky') for (let i = 0; i < 26; i++) { const x = R(i, 50) * W, y = 80 + R(i, 51) * 14; disc(x, y, 3 + Math.floor(R(i, 52) * 5), i % 3 ? '#e8d8f0' : '#c8b0e0'); }
   // torii
   const red = '#b8342a', redD = '#8a2418', blk = '#1a1420';
   rect(52, 32, 4, 60, red); rect(55, 32, 1, 60, redD); rect(104, 32, 4, 60, red); rect(107, 32, 1, 60, redD);
@@ -68,31 +85,30 @@ function buildScene() {
   rect(77, 31, 6, 9, red); rect(78, 33, 4, 5, '#f0d080');
   rect(40, 27, 80, 4, red); rect(40, 30, 80, 1, redD);
   rect(38, 25, 84, 2, blk); px(37, 24, blk); px(36, 23, blk); px(122, 24, blk); px(123, 23, blk);
-  // ground: stone plaza
+  if (b === 'snow') { rect(38, 24, 84, 1, '#eef4fa'); rect(46, 39, 68, 1, '#eef4fa'); }
+  // ground
+  const [g1, g2, g3, g4] = A.g;
   for (let y = 92; y < H; y++) for (let x = 0; x < W; x++) {
-    const tile = ((Math.floor(x / 12 + (Math.floor((y - 92) / 6) % 2) * 0.5)) + Math.floor((y - 92) / 6)) % 2;
-    let c = tile ? '#4d4a58' : '#57535f';
-    if ((y - 92) % 6 === 0 || (x + (Math.floor((y - 92) / 6) % 2) * 6) % 12 === 0) c = '#3a3744';
-    px(x, y, c);
+    const row = Math.floor((y - 92) / 6), tile = (Math.floor(x / 12 + (row % 2) * 0.5) + row) % 2;
+    px(x, y, (y - 92) % 6 === 0 || (x + (row % 2) * 6) % 12 === 0 ? g3 : tile ? g1 : g2);
   }
-  rect(0, 92, W, 1, '#6a6676');
-  // pedestal
+  rect(0, 92, W, 1, g4);
+  if (b === 'koi') { for (let y = 100; y < H; y++) for (let x = 0; x < W; x++) if (Math.abs(x - 80) > 18 || y > 104) px(x, y, (x + y) % 9 === 0 ? '#3a6a9a' : y < 103 ? '#2a5a8a' : '#1e4a7a'); for (const [sx, sy] of [[40, 108], [120, 110], [80, 114]]) { rect(sx - 5, sy, 10, 3, '#6a6676'); rect(sx - 4, sy - 1, 8, 1, '#8a8694'); } }
+  if (b === 'sky') for (let i = 0; i < 18; i++) disc(R(i, 60) * W, 110 + R(i, 61) * 10, 4 + Math.floor(R(i, 62) * 4), i % 2 ? '#e8d8f0' : '#d4c0e8');
   for (let y = 0; y < 4; y++) { const w = 13 - Math.abs(y - 1) * 2; rect(HERO_X - w, 89 + y, w * 2, 1, y < 2 ? '#7a7684' : '#5e5a68'); }
-  // stone lanterns
   for (const lx of [18, 142]) {
     rect(lx - 5, 89, 10, 3, '#6b6876'); rect(lx - 2, 78, 4, 11, '#7c7986'); rect(lx - 5, 76, 10, 2, '#6b6876');
     rect(lx - 4, 68, 8, 8, '#7c7986'); rect(lx - 2, 70, 4, 4, '#2a2020');
-    rect(lx - 7, 65, 14, 3, '#8a8794'); rect(lx - 5, 63, 10, 2, '#8a8794'); rect(lx - 1, 61, 2, 2, '#8a8794');
+    rect(lx - 7, 65, 14, 3, b === 'snow' ? '#eef4fa' : '#8a8794'); rect(lx - 5, 63, 10, 2, '#8a8794'); rect(lx - 1, 61, 2, 2, '#8a8794');
   }
-  // grass tufts
-  for (let i = 0; i < 14; i++) { const gx = Math.floor(R(i, 9) * W), gy = 92 + Math.floor(R(i, 8) * 26); if (Math.abs(gx - 80) < 16 && gy < 96) continue; px(gx, gy, '#3f5a2a'); px(gx + 1, gy - 1, '#567a34'); px(gx + 2, gy, '#3f5a2a'); }
+  if (b !== 'snow' && b !== 'sky') for (let i = 0; i < 14; i++) { const gx = Math.floor(R(i, 9) * W), gy = 92 + Math.floor(R(i, 8) * 26); if (Math.abs(gx - 80) < 16 && gy < 96) continue; px(gx, gy, '#3f5a2a'); px(gx + 1, gy - 1, '#567a34'); px(gx + 2, gy, '#3f5a2a'); }
   C = prev; return cv;
 }
 
-function sceneLive(t) {
-  for (let i = 0; i < 38; i++) {
-    const sx = Math.floor(R(i) * W), sy = Math.floor(R(i, 1) * 58);
-    if (Math.hypot(sx - 128, sy - 20) < 10) continue;
+function sceneLive(t, b, phase) {
+  if (phase !== 'day') for (let i = 0; i < 38; i++) {
+    const sx = Math.floor(R(i) * W), sy = Math.floor(R(i, 1) * 58), [mx, my, mr] = (BIOME_ART[b] || BIOME_ART.shrine).moon;
+    if (Math.hypot(sx - mx, sy - my) < mr + 3) continue;
     const tw = Math.sin(t * (1 + R(i, 2) * 2) + i);
     if (tw > -0.3) px(sx, sy, tw > 0.7 ? '#fff6d8' : '#a8a4c8');
   }
@@ -100,6 +116,61 @@ function sceneLive(t) {
     const f = Math.sin(t * 9 + lx) * 0.5 + Math.sin(t * 13) * 0.5;
     rect(lx - 2, 70, 4, 4, f > 0.3 ? '#ffd27a' : '#f6b24a'); px(lx - 1 + (f > 0 ? 1 : 0), 71, '#fff0b0');
   }
+  if (b === 'koi') for (let k = 0; k < 3; k++) { const u = t * 0.4 + k * 2.1, x = 80 + Math.cos(u) * (50 + k * 8), y = 110 + Math.sin(u * 2) * 3; const d = -Math.sin(u) > 0 ? 1 : -1; rect(x - 2, y, 4, 2, k === 1 ? '#f0f0f0' : '#f06a2a'); px(x - 3 * d, y, '#f0a060'); }
+  if (b === 'volcano') { if (Math.sin(t * 2) > 0) rect(33, 29, 14, 1, '#ffd060'); for (let i = 0; i < 10; i++) { const ph = (t * 0.5 + R(i, 70)) % 1; px(40 + (R(i, 71) - 0.5) * 16 * (1 + ph), 30 - ph * 28, ph < 0.5 ? '#ffd060' : '#c8401a'); } }
+}
+
+// ---------- day/night tint and weather (drawn over the stage)
+const PHASE_TINT = { dusk: 'rgba(230,120,70,0.16)', dawn: 'rgba(255,170,200,0.18)', day: 'rgba(185,215,255,0.32)' };
+function weather(w, t) {
+  if (!w || w === 'clear') return;
+  if (w === 'rain' || w === 'storm') {
+    const n = w === 'storm' ? 90 : 55, drift = w === 'storm' ? 0.5 : 0.2;
+    for (let i = 0; i < n; i++) { const y = (R(i, 31) * 130 + t * 170) % 130 - 10, x = (R(i, 30) * 200 + y * drift) % 180 - 10; px(x, y, '#8aa8d8'); px(x - drift, y - 1, '#6a88b8'); }
+    for (let i = 0; i < 8; i++) { const ph = (t * 3 + R(i, 33)) % 1; if (ph < 0.3) { const x = R(i, 34) * W, y = 93 + R(i, 35) * 24; px(x - 1, y, '#a8c8f0'); px(x + 1, y, '#a8c8f0'); } }
+    if (w === 'storm') {
+      C.fillStyle = 'rgba(10,10,30,0.25)'; C.fillRect(0, 0, W, H);
+      const ph = (t / 5.3) % 1, seed = Math.floor(t / 5.3);
+      if (ph < 0.05) { C.fillStyle = 'rgba(230,235,255,0.4)'; C.fillRect(0, 0, W, H); let x = 20 + R(seed, 36) * 120, y = 0; while (y < 70) { const nx = x + (R(seed * 7 + y, 37) - 0.5) * 10; line(x, y, nx, y + 5, '#ffffff'); x = nx; y += 5; } }
+    }
+  } else if (w === 'snow') {
+    for (let i = 0; i < 60; i++) { const y = (R(i, 40) * 130 + t * 14 * (0.6 + R(i, 41) * 0.6)) % 130 - 6, x = (R(i, 42) * W + Math.sin(t + i) * 4 + W) % W; px(x, y, '#ffffff'); }
+  } else if (w === 'fog') {
+    C.globalAlpha = 0.16;
+    for (let k = 0; k < 6; k++) { const y = 54 + k * 9 + Math.sin(t * 0.3 + k) * 2, off = (t * (4 + k) + k * 30) % 60; for (let x = -60; x < W; x += 60) rect(x + off, y, 46, 5, '#d0d8e8'); }
+    C.globalAlpha = 1;
+  } else if (w === 'sakura') {
+    for (let i = 0; i < 26; i++) { const x = (R(i, 44) * 200 + t * 26 * (0.7 + R(i, 45) * 0.6)) % 200 - 20, y = (R(i, 46) * 110 + Math.sin(t * 1.5 + i) * 6 + t * 4) % 110; px(x, y, '#f8c8d8'); if (Math.sin(t * 5 + i) > 0) px(x + 1, y, '#e58fb0'); }
+  }
+}
+
+// ---------- pets (follow the hero) and shrine visitors
+const PET_ART = {
+  fox: [['.o.o....', '.ooo...o', 'okow..oo', '.oooooow', '..ooooo.', '..o..o..'], { o: '#d8682a', w: '#fff0d0', k: '#1a1420' }],
+  cat: [['.g.g....', '.ggg...g', 'gkgk...g', '.ggggggg', '..ggggg.', '..g..g..'], { g: '#5a5a68', k: '#f0d060' }],
+  tanuki: [['.b.b....', '.bbb..kb', 'kwkw..bk', '.bbbbbbb', '..bwwbb.', '..b..b..'], { b: '#7a5a3a', k: '#2a1a10', w: '#f0e0c0' }],
+  crane: [['.r......', '.wwy....', '.w......', '.w..www.', '.wwwwwkk', '..w..w..'], { w: '#f4f0e8', r: '#d8302a', y: '#e0b040', k: '#1a1420' }],
+  dragonling: [['y...y...', 'gg.ggg..', 'gwgggggy', '.gggg.g.', '..g.gg..', '.g...g..'], { g: '#2fa070', y: '#f2d24a', w: '#ffffff' }],
+};
+function pet(id, t) {
+  const art = PET_ART[id]; if (!art) return;
+  const [rows, pal] = art, fly = id === 'dragonling' || id === 'crane';
+  const x = HERO_X - 20 + Math.round(Math.sin(t * 0.7) * 2), y = HERO_Y + (fly ? -10 + Math.round(Math.sin(t * 2.5) * 2) : 3 - (Math.sin(t * 5) > 0.6 ? 1 : 0));
+  rows.forEach((r, j) => { for (let i = 0; i < r.length; i++) if (r[i] !== '.') px(x + i, y + j, pal[r[i]]); });
+}
+const VISITOR_ART = {
+  monk: { h: '#f0c8a0', r: '#c87a2a', b: '#8a4a1a' }, farmer: { r: '#6a8a3a', b: '#4a5a2a' }, child: { r: '#e07a9a', b: '#5a6ab8' },
+  merchant: { r: '#3a5a9a', b: '#2a2a3a' }, ronin: { r: '#5a5a6a', b: '#2a2a34' }, fox: { h: '#efe6d2', r: '#efe6d2', b: '#d8682a', s: '#fff6e0' },
+};
+function visitor(v, t) {
+  if (!v) return;
+  const x = Math.round(v.x), y = HERO_Y, walking = v.walking;
+  hero(x, y - (walking && Math.sin(t * 10) > 0 ? 1 : 0), t + 1.7, null, VISITOR_ART[v.kind]);
+  if (v.kind === 'farmer') { rect(x - 7, y - 10, 14, 1, '#d8b060'); rect(x - 4, y - 12, 8, 2, '#e8c070'); }
+  if (v.kind === 'merchant') { rect(x - 4, y - 11, 8, 2, '#2a2a3a'); }
+  if (v.kind === 'ronin') { rect(x - 1, y - 11, 2, 2, '#1a1420'); line(x + 5, y - 2, x + 9, y - 8, '#c8c8d0'); }
+  if (v.kind === 'fox') for (const d of [-1, 1]) { px(x + d * 3, y - 10, '#d8682a'); px(x + d * 4, y - 11, '#d8682a'); }
+  if (v.waiting && !walking) { const by = y - 18 + Math.round(Math.sin(t * 4)); rect(x - 3, by - 6, 7, 8, '#fff6e0'); rect(x - 2, by - 7, 5, 1, '#fff6e0'); rect(x, by - 5, 1, 4, '#c4402b'); px(x, by, '#c4402b'); px(x - 1, by + 2, '#fff6e0'); }
 }
 
 // ---------- aura effects. each: (a, t, cx, cy, L) with L = 'b' (behind hero) or 'f' (in front)
@@ -300,20 +371,26 @@ const FX = {
       px(cx + Math.cos(an) * d, cy - 2 + s * d * 0.6, p > 0.8 ? a.c[3] : a.c[2]);
     }
   },
+  // Lucklight reborn: the whole shrine turns to light
   lucklight(a, t, cx, cy, L) {
+    const GOLD = { c: ['#a8741a', '#ffd060', '#fff0b0', '#fffaf0'] }, KOI = { c: ['#ffc04a', '#ffe8a0', '#fffaf0', '#ffffff'] }, SLIP = { c: ['#8a2a1c', '#c4402b', '#c4402b', '#fff6e0'] };
+    FX.orbit(KOI, t, cx, cy, L, { g: 'fish', n: 6, r: 27, ry: 8, sp: 0.7, y: -2, bob: 1 });
     if (L === 'b') {
-      for (let k = 0; k < 12; k++) {
-        const an = t * 0.4 + k / 12 * TAU, c = a.c[k % 5];
-        for (let r = 9; r < 60; r += 1) if ((r + k) % 2 === 0 || r < 24) px(cx + Math.cos(an) * r, cy - 6 + Math.sin(an) * r, r < 30 ? c : a.c[(k + 1) % 5]);
+      for (let k = 0; k < 24; k++) {
+        const an = t * 0.22 + k / 24 * TAU, c = a.c[k % 5];
+        for (let r = 12; r < 110; r++) if (r < 34 || (r + k) % 3 === 0) px(cx + Math.cos(an) * r, cy - 8 + Math.sin(an) * r, r < 34 ? c : k % 2 ? c : '#fff6d0');
       }
-      disc(cx, cy - 6, 8, a.c[5]);
-      ell(null, cx, cy + 9, 18, 4, a.c[Math.floor(t * 6) % 5], 50, t);
+      for (let m = 0; m < 3; m++) { const r = 14 + m * 7, d = m % 2 ? -1 : 1; for (let i = 0; i < 64; i++) { const an = t * 0.5 * d + i / 64 * TAU; px(cx + Math.cos(an) * r, cy - 8 + Math.sin(an) * r, i % 8 === 0 ? '#ffffff' : '#ffd060'); } }
+      ell(null, cx, cy - 8, 34, 34, '#fff0b0', 110, t);
+      for (let i = 0; i < 6; i++) { const an = -t * 0.5 + i / 6 * TAU; glyph('star', cx + Math.cos(an) * 34, cy - 8 + Math.sin(an) * 34, GOLD, i); }
+      FX.wings(GOLD, t, cx, cy, 'b', { n: 2, len: 18, sp: 1.6 });
+      for (let i = 0; i < 10; i++) { const x = R(i, 80) * W, y = 120 - ((t * 7 * (0.7 + R(i, 81) * 0.6) + R(i, 82) * 140) % 140); rect(x - 1, y - 2, 3, 4, '#d9532c'); px(x, y - 1, '#ffe8a0'); px(x, y, '#ffd060'); if (Math.sin(t * 6 + i) > 0) px(x, y + 2, '#ffd060'); }
+      for (let i = 0; i < 14; i++) { const ph = (t / (5 + R(i, 83) * 3) + R(i, 84)) % 1, x = (R(i, 85) * 180 + Math.sin(t * 1.3 + i) * 8) % 170 - 5; glyph('slip', x, ph * 120 - 6, SLIP, i, Math.sin(t * 3 + i) > 0); }
+      for (let k = 0; k < 3; k++) { const ph = (t * 0.6 + k / 3) % 1; ell(null, cx, cy + 9, 6 + ph * 34, (6 + ph * 34) * 0.22, ph < 0.4 ? '#ffffff' : '#ffd060', 60); }
     } else {
-      ell(null, cx, cy - 13 + Math.sin(t * 2), 6, 2, a.c[5], 26);
-      for (let i = 0; i < 16; i++) {
-        const an = t * 1.2 + i / 16 * TAU, x = cx + Math.cos(an) * 24, y = cy - 4 + Math.sin(an) * 10;
-        if (Math.sin(t * 5 + i) > 0) { px(x, y, a.c[5]); px(x - 1, y, a.c[i % 5]); px(x + 1, y, a.c[i % 5]); px(x, y - 1, a.c[i % 5]); px(x, y + 1, a.c[i % 5]); } else px(x, y, a.c[i % 5]);
-      }
+      FX.crown(GOLD, t, cx, cy, 'f');
+      ell(null, cx, cy - 15 + Math.sin(t * 2), 7, 2, '#ffffff', 28);
+      for (let i = 0; i < 18; i++) if (Math.sin(t * 4 + i * 1.9) > 0.55) glyph('star', cx + (R(i, 86) - 0.5) * 70, cy - 14 + (R(i, 87) - 0.5) * 50, GOLD, i);
     }
   },
 };
@@ -355,6 +432,7 @@ const GLYPH = {
   pie: ['.333.', '32223', '11111'],
   wishbone: ['2...2', '.2.2.', '..2..', '..2..'],
   maple: ['..2..', '2.2.2', '.222.', '22222', '..1..'],
+  slip: ['333', '323', '333', '313'],
   turkey: ['2.3.3.2', '.32223.', '3211123', '.21012.', '..111..', '..1.1..'],
 };
 function glyph(name, x, y, a, i = 0, flip = false) {
@@ -546,17 +624,35 @@ function harvest(t) {
   }
 }
 
-// full stage: scene + aura + hero. a = aura object or null. ev = Harvest Festival running
-export function drawStage(ctx, a, t, ev) {
+// Lucklight makes the torii glow
+function toriiGlow(t) {
+  const c = Math.sin(t * 3) > 0 ? '#ffe68a' : '#fff6d0';
+  for (const [x, y, w, h] of [[38, 24, 84, 8], [46, 39, 68, 5], [51, 31, 6, 62], [103, 31, 6, 62]]) { rect(x - 1, y - 1, w + 2, 1, c); rect(x - 1, y + h, w + 2, 1, c); rect(x - 1, y, 1, h, c); rect(x + w, y, 1, h, c); }
+  rect(78, 33, 4, 5, '#ffffff');
+}
+
+// full stage. o = { ev, biome, phase, weather, pet, visitor }
+export function drawStage(ctx, a, t, o = {}) {
   C = ctx; ctx.imageSmoothingEnabled = false;
-  if (!sceneCache) sceneCache = buildScene();
-  ctx.drawImage(sceneCache, 0, 0);
-  sceneLive(t);
-  if (ev) harvest(t);
+  const b = BIOME_ART[o.biome] ? o.biome : 'shrine';
+  ctx.drawImage(sceneCache[b] ||= buildScene(b), 0, 0);
+  sceneLive(t, b, o.phase);
+  if (PHASE_TINT[o.phase]) { ctx.fillStyle = PHASE_TINT[o.phase]; ctx.fillRect(0, 0, W, H); }
+  if (a?.id === 'lucklight') toriiGlow(t);
+  if (o.ev) harvest(t);
   if (a && tintOf(a)) { ctx.fillStyle = tintOf(a); ctx.fillRect(0, 0, W, H); }
   if (a) runFx(a, t, HERO_X, HERO_Y, 'b');
-  hero(HERO_X, HERO_Y + (Math.floor(t * 1.4) % 2 === 0 ? 0 : 0), t);
+  if (o.pet) pet(o.pet, t);
+  visitor(o.visitor, t);
+  hero(HERO_X, HERO_Y, t);
   if (a) runFx(a, t, HERO_X, HERO_Y, 'f');
+  weather(o.weather, t);
+}
+
+// hero + aura at any spot of any canvas (legend films)
+export function drawAuraAt(ctx, a, t, cx, cy) {
+  C = ctx; ctx.imageSmoothingEnabled = false;
+  runFx(a, t, cx, cy, 'b'); hero(cx, cy, t); runFx(a, t, cx, cy, 'f');
 }
 
 // small preview (collection cards, reveal). unknown = draws a dark silhouette with no aura

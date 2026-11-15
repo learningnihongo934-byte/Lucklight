@@ -51,5 +51,16 @@ export const sfx = {
     for (let i = 0; i < 16; i++) tone(note(root, i), 1.2 + i * 0.07, 0.4, 'square', 0.05);
     bell(note(root, 10), 2.4, 3.5, 0.16); bell(note(root, 12), 2.6, 3.5, 0.12); bell(note(root, 14), 2.8, 3.5, 0.1);
   },
+  visitor() { bell(784, 0, 0.8, 0.1); bell(659, 0.25, 1, 0.1); },
+  quest() { [0, 2, 4].forEach((n, i) => tone(note(523, n), i * 0.07, 0.18, 'square', 0.06)); },
+  achieve() { [0, 2, 4, 7].forEach((n, i) => tone(note(523, n), i * 0.08, 0.25, 'square', 0.07)); bell(note(523, 9), 0.34, 1.4, 0.1); },
+  streak() { for (let i = 0; i < 6; i++) tone(1046 + i * 90, i * 0.05, 0.08, 'square', 0.05); bell(1318, 0.32, 1, 0.08); },
+  film(k) {
+    if (k === 'start') { tone(55, 0, 3, 'sine', 0.22); noise(0, 2.5, 0.03, 300); }
+    else if (k === 'crack') { noise(0, 0.6, 0.12, 1200); tone(110, 0, 0.8, 'sawtooth', 0.05, 0.5); }
+    else if (k === 'gather') { tone(110, 0, 3, 'sawtooth', 0.04, 4); tone(220, 0.5, 2.5, 'triangle', 0.05, 3); noise(0, 3, 0.04, 2000); }
+    else if (k === 'hit') { tone(41, 0, 3, 'sine', 0.35); noise(0, 1.2, 0.14, 200); }
+    else if (k === 'reveal') { [0, 2, 4, 7, 9, 12].forEach((n, i) => tone(note(330, n), i * 0.09, 0.4, 'square', 0.06)); bell(note(330, 12), 0.6, 3.5, 0.16); bell(note(330, 14), 0.8, 3.5, 0.12); }
+  },
   spin() { tone(880 + Math.random() * 300, 0, 0.03, 'square', 0.04); },
 };

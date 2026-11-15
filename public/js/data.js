@@ -3,6 +3,7 @@
 // n = base odds "1 in n". c = pixel palette (dark -> light).
 // fx = effect name in fx.js, or a list of layers: names or { f, ...params, c? } (c overrides the palette for that layer)
 import { GEN, EVENT, EVENT_AURAS } from './more.js';
+import { LEGENDS } from './lore.js';
 export { EVENT };
 const A = (id, name, n, fx, c, tint) => ({ id, name, n, fx, c, ...(tint ? { tint } : {}) });
 const BASE = [
@@ -105,9 +106,18 @@ const BASE = [
   A('infinity', 'Infinity', 650000000, [{ f: 'galaxy', arms: 2, r: 30, flat: 0.4, sp: -0.5 }, { f: 'infinity', r: 30 }, { f: 'infinity', r: 20 }], ['#1a0a3a', '#8a5ae0', '#e0b0ff', '#ffffff'], 'rgba(20,0,40,0.4)'),
   A('paradox', 'Paradox', 900000000, ['void', 'glitch', { f: 'infinity', r: 26 }], ['#ffffff', '#000000', '#ff3a6a', '#3affe0'], 'rgba(255,255,255,0.12)'),
   A('omen', 'Omen', 1200000000, ['eclipse', { f: 'eyes', n: 18, w: 100 }, { f: 'orbit', g: 'link', n: 14, r: 20, ry: 5, sp: 0.8, bob: 0 }], ['#000000', '#3a0006', '#ff2a2a', '#ffd0c0'], 'rgba(30,0,0,0.6)'),
-  A('lucklight', 'Lucklight', 7700000000, 'lucklight', ['#ff6a5a', '#ffc04a', '#8ae06a', '#5ac8ff', '#b88aff', '#fff6d0']),
+  A('lucklight', 'Lucklight', 1e12, 'lucklight', ['#ff6a5a', '#ffc04a', '#8ae06a', '#5ac8ff', '#b88aff', '#fff6d0']),
 ];
 // all auras sorted by odds; event auras carry ev and only roll while their event runs
+// legends (1 in a billion and rarer): odds follow the lore order, log-even from 1B up to ~640B, then Lucklight at 1T
+{
+  const all = Object.fromEntries([...BASE, ...GEN].map(a => [a.id, a])), k = LEGENDS.length - 1;
+  LEGENDS.forEach((l, i) => {
+    const a = all[l.id]; if (!a) throw new Error('legend without aura: ' + l.id);
+    a.legend = l;
+    if (l.id !== 'lucklight') { const x = 1e9 * 10 ** (2.8 * i / (k - 1)); const p = 10 ** (Math.floor(Math.log10(x)) - 1); a.n = Math.round(x / p) * p; }
+  });
+}
 export const AURAS = [...BASE, ...GEN, ...EVENT_AURAS].sort((a, b) => a.n - b.n);
 export const AURA = Object.fromEntries(AURAS.map(a => [a.id, a]));
 

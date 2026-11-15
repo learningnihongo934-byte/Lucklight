@@ -1,3 +1,4 @@
+import { WAVE3 } from './names3.js';
 // Lucklight: the 300 extra auras and the Harvest Festival event auras.
 // Each line is "Name:family:palette". Lists are in rarity order; odds are spread log-evenly inside each band.
 
@@ -82,6 +83,19 @@ const F = {
   oblivion: [['void', { f: 'eyes', n: 20, w: 110 }, { f: 'helix', n: 44, r: 22, strands: 3, sp: -2 }], 0.6],
   celest: [[{ f: 'beam', w: 10 }, { f: 'rays', n: 12 }, { f: 'wings', n: 3, len: 14, sp: 2 }, 'halo'], 0.15],
   bigbang: [[{ f: 'rays', n: 16 }, { f: 'ripple', y: -4, flat: 0.9, r: 60, n: 4, per: 0.9 }, { f: 'galaxy', arms: 4, r: 50, sp: 1 }], 0.25],
+  void: [['void'], 0.45],
+  nova: [[{ f: 'rays', n: 10 }, { f: 'ripple', y: -4, flat: 0.9, r: 44, n: 3, per: 1.1 }], 0.2],
+  ygg: [['leaves', { f: 'beam', w: 8 }, { f: 'rise', g: 'leaf', n: 14, per: 2.5, w: 44 }, { f: 'rings', n: 2, r: 22, sp: 0.4 }], 0.2],
+  phoenix: [['flame', { f: 'wings', n: 2, len: 16, sp: 2.5 }, { f: 'rays', n: 12 }, { f: 'rise', g: 'feather', n: 8, per: 2 }], 0.3],
+  ocean: [['waves', { f: 'helix', n: 40, r: 22, strands: 4, sp: 1.4 }, { f: 'ripple', n: 3, r: 40, per: 1.3 }, { f: 'rise', g: 'bubble', n: 8, per: 3 }], 0.35],
+  storm: [['bolts', { f: 'smoke', n: 12, y: -20, h: 6, w: 50, size: 5, per: 6 }, { f: 'breeze', n: 20, sp: 90 }, { f: 'helix', n: 44, r: 22, sp: 3 }], 0.4],
+  timeF: [['clock', { f: 'rings', n: 3, r: 18, tilt: 0.4, sp: 1.5 }, { f: 'infinity', r: 30 }, { f: 'orbit', g: 'gear', n: 6, r: 26, sp: -0.4 }], 0.35],
+  beast: [['dragon', { f: 'rays', n: 12 }, { f: 'galaxy', arms: 2, r: 40, sp: 0.5 }, { f: 'rise', g: 'star', n: 6, per: 2 }], 0.35],
+  cosmicF: [[{ f: 'galaxy', arms: 4, r: 50, flat: 0.4, sp: 0.7 }, { f: 'infinity', r: 24 }, { f: 'rays', n: 10, sp: -0.3 }, { f: 'fall', g: 'star', n: 6, per: 2 }], 0.45],
+  frostF: [['frost', { f: 'breeze', n: 18, sp: 70 }, { f: 'fall', g: 'flake', n: 12, per: 2 }, { f: 'rays', n: 10 }, { f: 'rings', n: 2, r: 20 }], 0.25],
+  divine: [[{ f: 'beam', w: 12 }, { f: 'rays', n: 16 }, { f: 'wings', n: 3, len: 14, sp: 2 }, { f: 'rings', n: 2, r: 22, sp: 0.6 }, 'crown'], 0.15],
+  abyssF: [['void', { f: 'eyes', n: 22, w: 120 }, { f: 'helix', n: 44, r: 24, strands: 3, sp: -2 }, { f: 'smoke', n: 10, per: 4 }], 0.6],
+  bloomF: [[{ f: 'breeze', n: 14, sp: 60 }, 'petals', { f: 'fall', g: 'petal', n: 14, per: 2.2 }, { f: 'rays', n: 8 }, { f: 'rings', n: 1, r: 22 }], 0.15],
   primal: [[{ f: 'galaxy', arms: 2, r: 46, sp: 0.3 }, { f: 'rays', n: 12 }, { f: 'beam', w: 9 }, { f: 'rings', n: 2, r: 22, sp: 0.6 }, 'crown'], 0.3],
 };
 
@@ -101,11 +115,34 @@ const nice = x => { const p = 10 ** (Math.floor(Math.log10(x)) - 1); return Math
 function make(name, fam, pal, n) {
   const [fx, tint] = F[fam], c = P[pal];
   if (!fx || !c) throw new Error(`bad aura ${name}: ${fam}/${pal}`);
-  return { id: slug(name), name, n, fx, c, ...(tint ? { tint: hexA(c[0], tint) } : {}) };
+  return { id: slug(name), name, n, fx, c, fam, ...(tint ? { tint: hexA(c[0], tint) } : {}) };
 }
 const parse = s => s.replace(/\n/g, '').split('|').map(x => x.split(':'));
 // band sizes for LOW, by decade: 10-100, 100-1k, 1k-10k, 10k-100k, 100k-1M
 const BANDS = [[10, 18], [100, 45], [1e3, 60], [1e4, 65], [1e5, 65]];
+
+// palette from keywords in the name (first rule that matches), else any palette by hash
+const KP = [
+  [/prism|spectrum|rainbow|kaleido|refraction|holo/i, ['prism']],
+  [/frost|ice|snow|glacier|rime|hail|blizzard|winter|yuki|chill|flake|sleet|polar|cold|zero|white|whiteout|graupel|powder|icicle/i, ['ice', 'silver', 'sky']],
+  [/blood|crimson|scarlet|\bred\b|aka|oni|ruby|garnet|beryl|wrath|lust/i, ['crimson', 'blood']],
+  [/fire|flame|ember|blaze|lava|magma|cinder|coal|torch|pyre|inferno|hell|heat|phoenix|hearth|bonfire|spark|match|tinder|kindling|volcan|sun|solar|flare|brazier|fervor|courage|fenghuang|vermilion|fudo/i, ['fire', 'ember', 'solar', 'amber']],
+  [/gold|honey|amber|coin|koban|ryo|treasure|fortune|lucky|jackpot|greed|brass|citrine|topaz|pride|crown|king|emperor|throne|age|daruma|mallet|uchide|takarabune|pheasant|horseshoe/i, ['gold', 'amber']],
+  [/jade|leaf|moss|fern|tree|forest|grove|bamboo|oak|pine|cedar|birch|ivy|herb|basil|seed|sprout|sapling|clover|meadow|hedge|thicket|bramble|bonsai|twig|bud|kodama|garden|ygg|emerald|peridot|malachite|kappa|shika|orchard|tamagushi|arashiyama|fourleaf|jinmenju/i, ['leaf', 'moss', 'jade', 'lime']],
+  [/sea|tide|wave|ocean|koi|fish|carp|pond|brook|creek|stream|river|bubble|pearl|coral|shell|kraken|leviathan|whale|water|surf|swell|eddy|ryu|tsunami|abalone|brine|aqua|sapphire|lapis|turquoise|minnow|guppy|tadpole|eel|amabie|ningyo|naga|otohime|tortoise|tiamat|kame|bore|itsukushima|maelstrom|wishing|well|tranquil|serenity/i, ['sea', 'teal', 'sky']],
+  [/void|shadow|dark|black|abyss|oblivion|nightmare|dread|omen|yomi|requiem|umbra|curse|onyx|\bjet\b|obsidian|envy|sloth|pandora|lost|bakunawa|wormhole|nadir|ghost/i, ['void', 'obsidian', 'ink']],
+  [/moon|night|star|luna|lunar|twilight|nebula|galax|comet|cosmic|eclipse|constell|orion|vega|sirius|polaris|altair|deneb|rigel|betel|antares|canopus|arctur|aldebar|pleiad|meteor|nova|quasar|pulsar|astro|dream|cassiop|sagitt|universe|multiverse|singular|cosmos|kaguya|bolide|perihelion|reverie|usagi|crescent|dwarf|giant|neutron|magnetar|warp|tanabata|wonder|lucid|binary/i, ['night', 'cosmic', 'violet', 'silver']],
+  [/sakura|petal|blossom|flower|rose|plum|ume|lily|lotus|wisteria|peony|camellia|daisy|tulip|poppy|orchid|lilac|jasmine|gardenia|azalea|magnolia|primrose|hanami|kindness|bliss|heart|sweet|daydream|ikebana|nostalgia|konohana|kannon/i, ['sakura', 'rose', 'plum', 'peach']],
+  [/storm|thunder|lightning|volt|bolt|rai|tempest|typhoon|hurricane|cyclone|tornado|squall|static|whirl|downburst|cloudburst|tiger|mjolnir|tenjin/i, ['storm', 'violet', 'lemon']],
+  [/wind|breeze|gust|gale|zephyr|draft|kaze|mistral|sirocco|bora|kite|feather|wing|bird|crane|heron|egret|swan|dove|sky|cloud|nimbus|hawk|falcon|hayabusa|tori|garuda|simurgh|roc|ziz|magpie|wren|robin|finch|swallow|tessen|yabusame|wanderlust|kinshi|haraegushi/i, ['sky', 'mint', 'silver']],
+  [/fog|mist|haze|smoke|steam|vapor|smog|spirit|soot|incense|ink|enenra|raku|kettle|puff/i, ['ash', 'stone', 'ink']],
+  [/divine|god|kami|heaven|holy|sacred|angel|halo|celest|shrine|torii|miko|temple|sanctum|nirvana|elysium|ascen|grace|faith|hope|mercy|light|lumen|radian|zenith|shintai|kannushi|jizo|ninigi|fushimi|bell|suzu|ofuda|sutra|mantra|gohei|kamidana|omikuji|shugendo|harmony|valor|wisdom|justice/i, ['gold', 'dawn', 'bone']],
+  [/iron|steel|sword|blade|katana|tanto|wakizashi|yari|kunai|tetsu|metal|pewter|nickel|tin|cog|gear|clock|watch|windup|hourglass|mainframe|kernel|firmware|data|code|quantum|neural|laser|muramasa|masamune|kendo|resolve|sohei|kusarigama|excalibur|gungnir|murakumo|issun|momotaro|aegis/i, ['silver', 'stone', 'copper']],
+  [/neon|synth|vaporwave|cyber|pixel|glitch|overclock|bitcrush|hyper/i, ['neon', 'violet', 'teal']],
+];
+const ALLP = Object.keys(P).filter(k => k !== 'prism');
+const hash = s => { let h = 2166136261; for (const ch of s) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h >>> 0; };
+const palFor = name => { for (const [re, list] of KP) if (re.test(name)) return list[hash(name) % list.length]; return ALLP[hash(name) % ALLP.length]; };
 
 export const GEN = [];
 {
@@ -114,6 +151,16 @@ export const GEN = [];
   if (i !== low.length) throw new Error(`LOW has ${low.length}, bands want ${i}`);
   parse(MIL).forEach(([nm, f, p], j, all) => GEN.push(make(nm, f, p, nice(1e6 * 1000 ** ((j + 0.5) / all.length)))));
   parse(BIL).forEach(([nm, f, p, n]) => GEN.push(make(nm, f, p, +n)));
+  // wave 3: 600 more. Each band's auras are spread log-evenly through its decade.
+  const bands = {};
+  for (const line of WAVE3.trim().split('\n')) {
+    const [b, famPal, names] = line.split('|'), [fam, pal] = famPal.split(':');
+    for (const nm of names.split(',').map(x => x.trim()).filter(Boolean)) (bands[b] ||= []).push([nm, fam, pal || palFor(nm)]);
+  }
+  const shuffle = list => list.map(x => [hash(x[0]), x]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
+  ['0', '1', '2', '3', '4'].forEach(b => { const list = shuffle(bands[b]), lo = 10 ** (+b + 1); list.forEach(([nm, f, p], j) => GEN.push(make(nm, f, p, nice(lo * 10 ** ((j + 0.5) / list.length))))); });
+  shuffle(bands.M).forEach(([nm, f, p], j, all) => GEN.push(make(nm, f, p, nice(1e6 * 1000 ** ((j + 0.5) / all.length)))));
+  bands.B.forEach(([nm, f, p]) => GEN.push(make(nm, f, p, 1e9))); // legends: odds set from lore.js order in data.js
 }
 
 // ---------- Harvest Festival (Thanksgiving 2026). Rollable only while the event runs; kept forever once found.
