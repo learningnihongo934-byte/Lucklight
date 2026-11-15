@@ -37,6 +37,8 @@ kbd { font: inherit; font-size: 11px; padding: 0 4px; border: 2px solid var(--in
 .stats { display: flex; gap: 16px; flex-wrap: wrap; flex: 1; }
 .stats span { color: var(--ink2); font-size: 14px; }
 .stats b { color: var(--ink); font-weight: 400; font-size: 18px; margin-left: 4px; }
+.toggles { display: flex; gap: 6px; flex-wrap: wrap; }
+.mute.off { color: var(--ink2); border-style: dashed; opacity: .75; }
 .mute { background: none; border: 2px solid var(--ink2); padding: 2px 8px; cursor: pointer; font-size: 13px; }
 
 main {

@@ -17,7 +17,7 @@ Live at **https://lucklight.rennko.tech**. It's also a cabinet in [Rennko Arcade
 - **Settings**: auto-wear, reveal mode (always / new only / off, click to skip), stop auto-draw on a rarity or new aura, volume, save export/import.
 - **Admin command bar** (press `` ` ``): `admin <key>` unlocks `give`, `mon`, `luck`, `roll`, `up`, `maxall`, `charm`, `gear all`, `unlock all`, `wear`, `reveal`, `event on|off|auto`, `board remove <name>` and more (`help`). The key is the Worker secret `ADMIN_KEY` (kept locally in the gitignored `.admin-key`). Saves that use progress commands are marked admin and don't post to the board.
 
-Auras live in `public/js/data.js` (the first 100) and `public/js/more.js` (300 more as a compact name:effect:palette table, plus festival auras). All art is drawn in code as pixels (`public/js/fx.js`); sound is a small WebAudio synth (`public/js/sfx.js`). Progress is saved in the browser.
+Auras live in `public/js/data.js` (the first 100) and `public/js/more.js` (300 more as a compact name:effect:palette table, plus festival auras). All art is drawn in code as pixels (`public/js/fx.js`); sound is a small WebAudio synth (`public/js/sfx.js`). Background music is "yoiyami core theme" by Yoiyami ([OpenGameArt](https://opengameart.org/content/yoiyami-core-theme-%E2%80%93-deep-blue-ambient-piano), CC0), re-encoded to 96 kbps in `public/audio/`. Header buttons toggle popups (reveal spins, full-screen slips, rare-draw toasts), music and sound. Progress is saved in the browser.
 
 ## Build
 

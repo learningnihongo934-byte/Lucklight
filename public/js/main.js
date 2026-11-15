@@ -17,7 +17,7 @@ const fresh = () => ({
   up: { luck: 0, speed: 0, fortune: 0, multi: 0, auto: 0 }, charms: {}, active: {}, slip: null,
   owned: {}, gear: { hand: null, neck: null }, name: '', pid: '', mute: false, auto: false,
   dial: null, drawSize: null, log: [], gift: '', evForce: null, adminLuck: 1, tainted: false,
-  set: { autoWear: true, cut: 'all', stopAt: 0, stopNew: false, vol: 50 },
+  set: { autoWear: true, cut: 'all', stopAt: 0, stopNew: false, vol: 50, music: true, musicVol: 35, popups: true, autoQuiet: false },
 });
 let S = fresh();
 function load(raw) {
@@ -29,6 +29,18 @@ if (!S.pid) S.pid = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toS
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} };
 setInterval(save, 3000); addEventListener('pagehide', save);
 setMuted(S.mute); setVolume(S.set.vol / 100);
+
+// ---------- background music: "yoiyami core theme" by Yoiyami (CC0, OpenGameArt). Starts on the first click or key.
+const music = new Audio('audio/yoiyami.mp3'); music.loop = true; music.preload = 'none';
+const syncMusic = () => {
+  music.volume = Math.max(0, Math.min(1, S.set.musicVol / 100));
+  if (S.set.music && unlocked) music.play().catch(() => {}); else music.pause();
+};
+let unlocked = false;
+const unlock = () => { if (unlocked) return; unlocked = true; syncMusic(); };
+addEventListener('pointerdown', unlock, { capture: true }); addEventListener('keydown', unlock, { capture: true });
+// popups = name spins, full-screen reveal slips and rare-draw toasts
+const popupsOn = () => S.set.popups && !(S.auto && S.set.autoQuiet);
 
 // ---------- event
 const eventOn = () => S.evForce === 'on' ? true : S.evForce === 'off' ? false : Date.now() >= EVENT.start && Date.now() < EVENT.end;
@@ -110,7 +122,7 @@ const waitSkip = ms => new Promise(r => { const t = setTimeout(done, ms); functi
 let cutAura = null;
 async function reveal(a, isNew, earned, N, nNew) {
   const tier = tierOf(a.n), rank = AURAS.indexOf(a), mode = S.set.cut;
-  const big = mode === 'all' || (mode === 'new' && isNew);
+  const big = popupsOn() && (mode === 'all' || (mode === 'new' && isNew));
   revealing = true;
   if (tier >= 1 && big) {
     const slip = $('#slip'), p = pool(), ri = p.indexOf(a); slip.className = 'slip spinning';
@@ -152,7 +164,7 @@ function showSlip(a, isNew, earned, tier, N = 1, nNew = 0) {
     <div class="nm" style="--ac:${a.c[Math.min(1, a.c.length - 1)]}">${esc(a.name)}${isNew ? '<span class="stamp">NEW</span>' : ''}${a.ev ? '<span class="evtag">Festival</span>' : ''}</div>
     <div class="odds">1 in ${fmt(a.n)}${N > 1 ? ` · best of ${N} draws` : ''}</div>
     <div class="earn">${earned ? `+${fmt(earned)} mon` : ''}${nNew > (isNew ? 1 : 0) ? ` · ${nNew} new auras` : ''}</div>`;
-  if (tier >= 1) toast(`${g.word}: ${a.name}, 1 in ${fmt(a.n)}`);
+  if (tier >= 1 && popupsOn()) toast(`${g.word}: ${a.name}, 1 in ${fmt(a.n)}`);
 }
 
 // ---------- UI
@@ -228,6 +240,9 @@ const VIEWS = {
   settings() {
     const st = S.set;
     return [`<p class="lede" data-k="head">Keys: Space draw · A auto · 1–6 tabs · Esc closes · \` opens the command bar.</p>`,
+      `<div class="row" data-k="s-pop"><div class="info"><b>Popups</b><span>Name spins, full-screen reveal slips and rare-draw toasts. Off keeps drawing quiet; rare draws still land in your bag and the recent list.</span></div>${chk('popups', st.popups)}</div>`,
+      `<div class="row" data-k="s-quiet"><div class="info"><b>Quiet auto-draw</b><span>No popups while auto-draw is on, popups again when you draw by hand.</span></div>${chk('autoQuiet', st.autoQuiet)}</div>`,
+      `<div class="row" data-k="s-music"><div class="info"><b>Music</b><span>"yoiyami core theme" by Yoiyami (CC0). ${st.musicVol}%</span></div><div class="btns">${chk('music', st.music)}<input type="range" min="0" max="100" data-set="musicVol" value="${st.musicVol}"></div></div>`,
       `<div class="row" data-k="s-wear"><div class="info"><b>Auto-wear</b><span>Put on any aura rarer than the one you wear.</span></div>${chk('autoWear', st.autoWear)}</div>`,
       `<div class="row" data-k="s-cut"><div class="info"><b>Reveals</b><span>Name spins and full-screen slips. Click a slip to skip it.</span></div>${sel('cut', st.cut, [['all', 'Always'], ['new', 'New auras only'], ['off', 'Off']])}</div>`,
       `<div class="row" data-k="s-stop"><div class="info"><b>Stop auto-draw</b><span>Turn auto off when you draw something at least this rare.</span></div>${sel('stopAt', st.stopAt, [[0, 'Never'], [1e3, '1 in 1K'], [1e4, '1 in 10K'], [1e5, '1 in 100K'], [1e6, '1 in 1M'], [1e7, '1 in 10M'], [1e8, '1 in 100M'], [1e9, '1 in 1B']])}</div>`,
@@ -255,6 +270,9 @@ function renderStats() {
   $('#rolls').textContent = fmt(S.rolls);
   $('#autowrap').hidden = !S.up.auto; $('#auto').checked = !!S.auto;
   $('#mute').textContent = S.mute ? 'Sound off' : 'Sound on';
+  $('#musicbtn').textContent = S.set.music ? 'Music on' : 'Music off';
+  $('#popbtn').textContent = S.set.popups ? 'Popups on' : 'Popups off';
+  for (const b of ['#mute', '#musicbtn', '#popbtn']) $(b).classList.toggle('off', /off/.test($(b).textContent));
   const now = Date.now(), chips = [];
   if (S.dial && S.dial < p.max) chips.push(`<span>Dial ×${short2(p.base)}</span>`);
   if (drawN() > 1) chips.push(`<span>×${drawN()} per draw</span>`);
@@ -344,7 +362,7 @@ function act(kind, id) {
     navigator.clipboard?.writeText(code).then(() => toast('Save code copied.'), () => prompt('Copy your save code:', code));
   } else if (kind === 'import') {
     const code = prompt('Paste a save code. This replaces your current save.'); if (!code) return;
-    try { S = load(decodeURIComponent(escape(atob(code.trim())))); save(); toast('Save loaded.'); setMuted(S.mute); setVolume(S.set.vol / 100); } catch { toast('That code did not work.'); return; }
+    try { S = load(decodeURIComponent(escape(atob(code.trim())))); save(); toast('Save loaded.'); setMuted(S.mute); setVolume(S.set.vol / 100); syncMusic(); } catch { toast('That code did not work.'); return; }
   } else if (kind === 'reset') {
     if (!confirm('Reset everything? Your auras, mon and upgrades will be gone.')) return;
     const keep = { pid: S.pid, name: S.name }; S = Object.assign(fresh(), keep); save(); toast('Fresh start.');
@@ -357,6 +375,8 @@ function setSetting(key, el) {
   else if (key === 'drawSize') { const n = Math.round(+v); S.drawSize = n >= 1 && n < maxDraw() ? n : null; }
   else if (key === 'vol') { S.set.vol = +v; setVolume(+v / 100); }
   else if (key === 'stopAt') S.set.stopAt = +v;
+  else if (key === 'musicVol') { S.set.musicVol = +v; syncMusic(); }
+  else if (key === 'music') { S.set.music = v; syncMusic(); }
   else S.set[key] = v;
   save(); refresh();
 }
@@ -367,7 +387,10 @@ for (const host of [$('#panel'), $('#event')]) {
   host.addEventListener('click', e => { const b = e.target.closest('button[data-act]'); if (b && e.detail === 0 && !b.disabled) act(b.dataset.act, b.dataset.id); });
 }
 $('#panel').addEventListener('change', e => { const el = e.target.closest('[data-set]'); if (el) setSetting(el.dataset.set, el); });
-$('#panel').addEventListener('input', e => { const el = e.target.closest('[data-set="vol"]'); if (el) setVolume(+el.value / 100); });
+$('#panel').addEventListener('input', e => {
+  const el = e.target.closest('[data-set="vol"], [data-set="musicVol"]'); if (!el) return;
+  if (el.dataset.set === 'vol') setVolume(+el.value / 100); else { S.set.musicVol = +el.value; syncMusic(); }
+});
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) { sfx.click(); setTab(b.dataset.tab); } });
 $('#q').addEventListener('input', e => { ui.q = e.target.value; listT = 0; refresh(); });
 $('#flt').addEventListener('change', e => { ui.f = e.target.value; listT = 0; refresh(); });
@@ -375,6 +398,8 @@ $('#roll').addEventListener('pointerdown', e => { if (e.button === 0) { e.preven
 $('#roll').addEventListener('click', e => { if (e.detail === 0) roll(); });
 $('#auto').addEventListener('change', e => { S.auto = e.target.checked; save(); });
 $('#mute').addEventListener('click', () => { S.mute = !S.mute; setMuted(S.mute); save(); renderStats(); });
+$('#musicbtn').addEventListener('click', () => { S.set.music = !S.set.music; syncMusic(); save(); refresh(); });
+$('#popbtn').addEventListener('click', () => { S.set.popups = !S.set.popups; save(); refresh(); toast(S.set.popups ? 'Popups on.' : 'Popups off: draws land quietly.'); });
 $('#cut').addEventListener('pointerdown', () => skipCut?.());
 addEventListener('keydown', e => {
   if (e.key === '`' || (e.key === '/' && !e.target.closest('input, textarea, select'))) { e.preventDefault(); openConsole(); return; }
