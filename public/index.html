@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lucklight</title>
+<meta name="description" content="Draw fortunes at a night shrine. Collect 20 pixel auras, from Dust (1 in 2) to Lucklight (1 in 1.5 billion).">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%231b1e38'/%3E%3Crect x='1' y='3' width='14' height='2' fill='%23b8342a'/%3E%3Crect x='0' y='2' width='16' height='1' fill='%231a1420'/%3E%3Crect x='3' y='6' width='10' height='1' fill='%23b8342a'/%3E%3Crect x='4' y='5' width='2' height='11' fill='%23b8342a'/%3E%3Crect x='10' y='5' width='2' height='11' fill='%23b8342a'/%3E%3Crect x='7' y='9' width='2' height='4' fill='%23f6c25a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <h1>Lucklight <span class="jp">おみくじ</span></h1>
+  <div class="stats">
+    <span>Mon <b id="mon">0</b></span>
+    <span>Luck <b id="luck">×1</b></span>
+    <span>Draws <b id="rolls">0</b></span>
+  </div>
+  <button id="mute" class="mute">Sound on</button>
+</header>
+
+<main>
+  <section class="shrine">
+    <div class="stagewrap">
+      <canvas id="stage" width="160" height="120"></canvas>
+      <div id="buffs" class="buffs"></div>
+    </div>
+    <div class="drawrow">
+      <div id="slip" class="slip"><div class="grade">吉</div><div class="nm">Draw your first fortune</div><div class="odds">Press the box or Space</div></div>
+      <div class="controls">
+        <button id="roll" class="drawbox"><span class="lbl">Draw</span><span class="jp">引く</span><span class="bar"><i id="rollbar"></i></span></button>
+        <label id="autowrap" class="auto" hidden><input type="checkbox" id="auto"> Auto <kbd>A</kbd></label>
+      </div>
+    </div>
+  </section>
+
+  <aside id="panel" class="panel">
+    <nav id="tabs" class="tabs"></nav>
+    <div id="tab-list" class="list"></div>
+    <div id="tab-board" class="board" hidden>
+      <form id="lbform" class="lbform">
+        <label for="lbname">Name on the board</label>
+        <div><input id="lbname" maxlength="16" autocomplete="off" placeholder="your name"><button type="submit">Post</button></div>
+        <p id="lbme" class="lede"></p>
+      </form>
+      <div class="lbcols">
+        <div><h3>Rarest aura</h3><ol id="lbbest"></ol></div>
+        <div><h3>Most draws</h3><ol id="lbrolls"></ol></div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<div id="cut">
+  <div class="cut-slip">
+    <div class="grade"></div><div class="gword"></div>
+    <canvas id="cutcv" width="80" height="80"></canvas>
+    <div class="nm"></div><div class="odds"></div><div class="new" hidden>First time</div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+<footer class="foot">Made by Virat Reddy Kaukuntla · <a href="https://rennko.tech">rennko.tech</a></footer>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
