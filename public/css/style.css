@@ -173,6 +173,10 @@ body.shake main { animation: shake .35s steps(3) 3; }
   background-image: repeating-linear-gradient(135deg, transparent 0 10px, rgba(200,74,26,.12) 10px 12px); }
 .evinfo { flex: 1; display: flex; flex-direction: column; font-size: 13px; color: var(--ink2); }
 .evinfo b { font-weight: 400; font-size: 17px; color: #8a3a10; }
+.evclock { display: flex; flex-direction: column; align-items: center; background: var(--ink); color: #ffe68a; padding: 4px 10px; min-width: 120px; }
+.evclock small { font-size: 11px; color: #f0c890; }
+.evtime { font-size: 20px; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
+@media (max-width: 480px) { .event { flex-wrap: wrap; } .evinfo { flex-basis: 100%; } }
 .event button { background: #c84a1a; color: var(--paper); border: 0; padding: 8px 12px; cursor: pointer; box-shadow: inset 0 -3px 0 #8a2a0a; }
 .event button:disabled { background: var(--paper3); color: var(--ink2); box-shadow: none; cursor: default; }
 .evtag { display: inline-block; font-size: 11px; color: #8a3a10; border: 1px solid #c84a1a; padding: 0 4px; margin-left: 6px; vertical-align: middle; }

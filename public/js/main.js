@@ -294,14 +294,24 @@ function renderStats() {
   renderEvent(); renderRecent();
 }
 
+const clock = ms => { ms = Math.max(0, ms); const d = Math.floor(ms / 864e5), p = n => String(n).padStart(2, '0'); return `${d ? d + 'd ' : ''}${p(Math.floor(ms / 36e5) % 24)}:${p(Math.floor(ms / 6e4) % 60)}:${p(Math.floor(ms / 1e3) % 60)}`; };
+// the banner is built once; the timer and counts update in place so the gift button never gets swapped mid-click
 function renderEvent() {
   const el = $('#event'), on = eventOn();
   el.hidden = !on; if (!on) return;
+  if (!el.firstChild) el.innerHTML = `<div class="evinfo"><b class="evtitle"></b><span class="evsub"></span></div>
+    <div class="evclock"><small class="evlbl"></small><span class="evtime"></span></div><button data-act="gift"></button>`;
   const now = Date.now(), found = EVA.filter(a => S.found[a.id]).length, claimed = S.gift === today();
-  const day = now >= EVENT.day && now < EVENT.day + 864e5 ? 'Happy Thanksgiving! ' : '';
-  const html = `<div class="evinfo"><b>${day}${EVENT.name}</b><span>${now < EVENT.end ? `ends in ${left(EVENT.end - now)}` : 'forced on'} · festival luck ×${EVENT.luck} · ${found}/${EVA.length} harvest auras</span></div>
-    <button data-act="gift" ${claimed ? 'disabled' : ''}>${claimed ? 'Gift claimed' : "Today's gift"}</button>`;
-  if (el.innerHTML !== html) el.innerHTML = html;
+  const isDay = now >= EVENT.day && now < EVENT.day + 864e5, forced = now >= EVENT.end || now < EVENT.start;
+  const set = (q, v) => { const n = el.querySelector(q); if (n.textContent !== v) n.textContent = v; };
+  set('.evtitle', (isDay ? 'Happy Thanksgiving! ' : '') + EVENT.name);
+  set('.evsub', `Festival luck ×${EVENT.luck} · ${found}/${EVA.length} harvest auras`);
+  if (forced) { set('.evlbl', 'Forced on'); set('.evtime', 'admin'); }
+  else if (now < EVENT.day) { set('.evlbl', 'Thanksgiving in'); set('.evtime', clock(EVENT.day - now)); }
+  else if (isDay) { set('.evlbl', 'Today is Thanksgiving! Ends in'); set('.evtime', clock(EVENT.end - now)); }
+  else { set('.evlbl', 'Festival ends in'); set('.evtime', clock(EVENT.end - now)); }
+  el.title = `Festival ends ${new Date(EVENT.end).toLocaleString()}`;
+  const b = el.querySelector('button'); b.disabled = claimed; set('button', claimed ? 'Gift claimed' : "Today's gift");
 }
 function renderRecent() {
   const html = S.log.slice(0, 12).map(l => { const a = AURA[l.id]; return a ? `<li><span class="nm2">${esc(a.name)}${l.nw ? ' <i>new</i>' : ''}</span><span>1 in ${short(a.n)} · #${fmt(l.r)}</span></li>` : ''; }).join('') || '<li class="empty">Rare draws show up here.</li>';
