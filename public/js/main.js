@@ -305,7 +305,7 @@ function renderEvent() {
   const isDay = now >= EVENT.day && now < EVENT.day + 864e5, forced = now >= EVENT.end || now < EVENT.start;
   const set = (q, v) => { const n = el.querySelector(q); if (n.textContent !== v) n.textContent = v; };
   set('.evtitle', (isDay ? 'Happy Thanksgiving! ' : '') + EVENT.name);
-  set('.evsub', `Festival luck ×${EVENT.luck} · ${found}/${EVA.length} harvest auras`);
+  set('.evsub', `${forced ? '' : `Ends ${new Date(EVENT.end - 1).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · `}Festival luck ×${EVENT.luck} · ${found}/${EVA.length} harvest auras`);
   if (forced) { set('.evlbl', 'Forced on'); set('.evtime', 'admin'); }
   else if (now < EVENT.day) { set('.evlbl', 'Thanksgiving in'); set('.evtime', clock(EVENT.day - now)); }
   else if (isDay) { set('.evlbl', 'Today is Thanksgiving! Ends in'); set('.evtime', clock(EVENT.end - now)); }
